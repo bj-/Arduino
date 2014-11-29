@@ -25,10 +25,14 @@ SevSeg sevseg; //Instantiate a seven segment controller object
 
 int adjustment = A3;  // ADC3 (CPU Pin 26) ( 10k adj resistor (to adjust time delay)
 
+int incomingInt = 0;
+
 
 void setup() 
 {
   
+  Serial.begin(9600);
+  Serial.setTimeout(10);
   
   pinMode(adjustment, INPUT);
     
@@ -44,18 +48,41 @@ void setup()
 
 void loop() 
 {
-  static unsigned long timer = millis();
-  static int deciSeconds = 0;
+//  static unsigned long timer = millis();
+//  static int deciSeconds = 0;
   
+  
+   if (Serial.available() > 0) 
+   {
+      incomingInt = Serial.parseInt();
+//      Serial.write(incomingInt);
+//      Serial.print(incomingInt);
+   }
+
+      sevseg.setNumber(incomingInt, 2);
+
+/*
+    if (incomingInt > 9999)
+    {
+      sevseg.setNumber(123, 1);
+    }
+    else 
+    {
+      sevseg.setNumber(568, 1);
+    }
+*/
+//    sevseg.setNumber(123, 1);
+
+/*   
   if (millis() >= timer) {
     deciSeconds++; // 100 milliSeconds is equal to 1 deciSecond
     timer += 100; 
-    if (deciSeconds == 10000) { // Reset to 0 after counting for 1000 seconds.
+    if (deciSeconds == 1000) { // Reset to 0 after counting for 1000 seconds.
       deciSeconds=0;
     }
     sevseg.setNumber(deciSeconds, 1);
   }
-
+*/
 
 
   sevseg.refreshDisplay(); // Must run repeatedly
