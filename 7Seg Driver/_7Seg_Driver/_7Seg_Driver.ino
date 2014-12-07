@@ -43,7 +43,7 @@ void setup()
 
   sevseg.begin(COMMON_ANODE, numDigits, digitPins, segmentPins);
 //  sevseg.begin(COMMON_CATHODE, numDigits, digitPins, segmentPins);
-  sevseg.setBrightness(1); // from 0 to 100
+  sevseg.setBrightness(100); // from 0 to 100
 }
 
 void loop() 
