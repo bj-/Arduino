@@ -28,18 +28,35 @@ int adjustment = A3;  // ADC3 (CPU Pin 26) ( 10k adj resistor (to adjust time de
 int incomingInt = 0;
 
 
+int segA = 8; // PB0
+int segB = 21; // PB7
+int segC = 18; // PC4
+int segD = 15; // PC1
+int segE = 14; // PC0
+int segF = 5; // PD5
+int segG = 17; // PC3
+int segDP = 16; // PC2
+
+int digit1 = 10; // PB2
+int digit2 = 9; // PB1
+int digit3 = 20; // PB6
+int digit4 = 19; // PC5
+
+
 void setup() 
 {
   
   Serial.begin(9600);
-  Serial.setTimeout(10);
+  Serial.setTimeout(1000);
   
   pinMode(adjustment, INPUT);
     
 //  byte numDigits = 4;   
   byte numDigits = 3;   
-  byte digitPins[] = {2, 3, 4, 5};
-  byte segmentPins[] = {6, 7, 8, 9, 10, 11, 12, 13};
+//  byte digitPins[] = {2, 3, 4, 5};
+  byte digitPins[] = {digit1, digit2, digit3, digit4};
+//  byte segmentPins[] = {6, 7, 8, 9, 10, 11, 12, 13};
+  byte segmentPins[] = {segA, segB, segC, segD, segE, segF, segG, segDP};
 
   sevseg.begin(COMMON_ANODE, numDigits, digitPins, segmentPins);
 //  sevseg.begin(COMMON_CATHODE, numDigits, digitPins, segmentPins);
@@ -59,6 +76,7 @@ void loop()
 //      Serial.print(incomingInt);
    }
 
+//      sevseg.setNumber(123, 2);
       sevseg.setNumber(incomingInt, 2);
 
 /*
