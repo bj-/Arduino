@@ -40,6 +40,7 @@
 // include the library code:
 #include <LiquidCrystal.h>
 #include "DHT.h"
+#include <DS1302.h>
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
@@ -58,21 +59,116 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
 DHT dht(DHTPIN, DHTTYPE);
 
+// Init the DS1302
+DS1302 rtc(6, 7, 8);
+// Init a Time-data structure
+Time t;
+
+int OnTimeH = 10;
+int OnTimeM = 00;
+int OffTimeH = 22;
+int OffTimeM = 00;
+
+
+int RelayPin = 10;
+
+String RelayStatus = "Off";
 
 void setup() {
   
   dht.begin();
   // set up the LCD's number of columns and rows:
   lcd.begin(8, 2);
-  // Print a message to the LCD.
-  lcd.setCursor(0, 0);
-  lcd.print("   * C  ");
-  lcd.setCursor(0, 1);
-  lcd.print("   % RH ");
+
+  // Set the clock to run-mode, and disable the write protection
+  rtc.halt(false);
+  rtc.writeProtect(false);
+
+   Serial.begin(9600);
+
+   pinMode(RelayPin, OUTPUT);
+
+// The following lines can be commented out to use the values already stored in the DS1302
+/*
+  rtc.setDOW(SATURDAY);        // Set Day-of-Week to FRIDAY
+  rtc.setTime(18, 35, 40);     // Set the time to 12:00:00 (24hr format)
+  rtc.setDate(13, 03, 2016);   // Set the date to August 6th, 2010
+//*/
 }
 
 void loop() {
-  
+
+  t = rtc.getTime();
+
+  //lcd.setCursor(0, 0);
+  //lcd.print(t.hour, DEC);
+//Serial.println(t);
+
+  // Clear display
+  lcd.setCursor(0, 0);
+  lcd.print("        ");
+  lcd.setCursor(0, 1);
+  lcd.print("        ");
+
+
+  lcd.setCursor(0, 0);
+  lcd.print(t.hour, DEC);
+  lcd.setCursor(2, 0);
+  lcd.print(":");
+  lcd.setCursor(3, 0);
+  lcd.print(t.min, DEC);
+  lcd.setCursor(5, 0);
+  lcd.print(":");
+  lcd.setCursor(6, 0);
+  lcd.print(t.sec, DEC);
+
+/*
+  // Send Day-of-Week and time
+  Serial.print("It is the ");
+  Serial.print(t.dow, DEC);
+  Serial.print(". day of the week ");
+  Serial.print(t.hour, DEC);
+  Serial.print(":");
+  Serial.print(t.min, DEC);
+  Serial.print(":");
+  Serial.print(t.sec, DEC);
+  Serial.println(";");
+*/
+ 
+  lcd.setCursor(0, 1);
+  lcd.print(RelayStatus);
+  lcd.setCursor(3, 1);
+  lcd.print("10-22");
+
+  if (t.hour >= OnTimeH & t.min >= OnTimeM)
+  {
+     if (t.hour >= OffTimeH & t.min >= OffTimeM )
+     {
+       digitalWrite(RelayPin, LOW);
+       RelayStatus = "Off";
+     }
+     else
+     {
+       digitalWrite(RelayPin, HIGH);
+       RelayStatus = "On";
+     }
+  }
+  else 
+  {
+     digitalWrite(RelayPin, LOW);
+     RelayStatus = "Off";
+  }
+
+delay(3000);
+/*
+  Serial.print(t.dow, DEC);
+  Serial.print(". day of the week (counting monday as the 1th), and it has passed ");
+  Serial.print(t.hour, DEC);
+  Serial.print(" hour(s), ");
+  Serial.print(t.min, DEC);
+  Serial.print(" minute(s) and ");
+  Serial.print(t.sec, DEC);
+*/  
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
   int h = dht.readHumidity();
@@ -87,13 +183,19 @@ void loop() {
   } 
   else 
   {
+    // Print a message to the LCD.
+    lcd.setCursor(0, 0);
+    lcd.print("   * C  ");
+    lcd.setCursor(0, 1);
+    lcd.print("   % RH ");
+
     lcd.setCursor(0, 0);
     lcd.print(t);
     lcd.setCursor(0, 1);
     lcd.print(h);
   }
 
-  delay(1000);
+  delay(5000);
 
 }
 
