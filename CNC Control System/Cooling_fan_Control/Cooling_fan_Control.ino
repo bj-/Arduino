@@ -12,6 +12,14 @@
 
 #define ONE_WIRE_BUS 3
 
+int RelayPin = 5;  // Relay Pin (Relay for cooling Fan)
+int SwitchPin = 4; // Input Switch (Spindle is Run)
+
+int RunDelay = 300; // Delay in seconds after last change state of input switch or t Alarm before off cooling fan FAN
+int TemperatureShift = 5; // Shift of temperature. Run FUN when inside temperature more than outside.
+
+
+// =============================
 DHT dht(DHTPIN, DHTTYPE);
 
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -22,30 +30,42 @@ OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature.
 DallasTemperature sensors(&oneWire);
 
-
-// Relay for cooling Fan
-int RelayPin = 5;  // Relay Pin
-
-// Spindle is Run
-int SwitchPin = 4; // Input Switch
-
-
 // iside Temperature index
 bool OverHeat = false;
 
 bool RelayPinState = false;
+
+
+
 // Timer
-int TimeFromStart = 0;
+//int TimeFromStart = 0;
+// Changed state (OverHeat is ON / Switch input is ON
+// Used for Timer (delay before off FAN)
+bool ChangedState = false;
+long ChangedStateTime = 0;
+bool TimerState = false;
+int CountDown = 0;
+
 
 void setup()
 {
-  delay(1000);
+  //delay(1000);
 
   dht.begin();
 
   lcd.init();                      // initialize the lcd 
   lcd.backlight();
 
+  // Default Screen
+  lcd.setCursor(0,0);
+  lcd.print("DHT:      %       *C");
+  lcd.setCursor(0,1);
+  lcd.print("DS:      *C; tOn:+  ");
+  lcd.setCursor(18,1);
+  lcd.print(TemperatureShift);
+  lcd.setCursor(0,2);
+  lcd.print("Sw:  t:   Tm:    R: ");
+  
   // Start up the library
   sensors.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
 
@@ -53,12 +73,15 @@ void setup()
   pinMode(SwitchPin, INPUT);
   
   Serial.begin(9600);
+  Serial.println("CNC Monitoring System");
+  Serial.println("Cooling FAN Control module");
+  Serial.println("v: 1.0.0");
 }
 
 
 void loop()
 {
-  delay(1000);
+  //delay(1000);
 
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
@@ -82,97 +105,121 @@ void loop()
   // DS18B20
   sensors.requestTemperatures(); // Send the command to get temperatures
   
-  lcd.setCursor(0,0);
-  lcd.print("Humidity:           ");
-  lcd.setCursor(0,1);
-  lcd.print("t in:     ou:     *C");
-  lcd.setCursor(0,2);
-  lcd.print("Sw:    t:    Rel:   ");
+
 
   lcd.setCursor(0,3);
   lcd.print(millis());
 
+
   // Humidity
-  lcd.setCursor(10,0);
+  lcd.setCursor(4,0);
   lcd.print(h);
   // DHT temp
-  lcd.setCursor(5,1);
+  lcd.setCursor(12,0);
   lcd.print(t_dht);
   // DS18B20tmp
-  lcd.setCursor(13,1);
+  lcd.setCursor(3,1);
   lcd.print(t_ds);
 
+  Serial.print("DHT Humidity: ");
+  Serial.print(h);
+  Serial.print(" / Temp (*C): ");
+  Serial.print(t_dht);
+  Serial.print("; DS18B20 temp (*C): ");
+  Serial.print(t_ds);
+
+
+  lcd.setCursor(0,2);
+  lcd.print("Sw:  t:   Tm:    R: ");
+
+  
   // SWwitch Pin State;
+  //if 
   int SwitchPinState = digitalRead(SwitchPin);
-  bool SwitchStatus = (SwitchPinState == HIGH) ? false : true;
-  String SwitchPinStatus = (SwitchPinState == HIGH) ? "OFF" : "ON";
+  bool SwitchStatus = (SwitchPinState == HIGH) ? false : true; // true - FAN Should be RUN
+  String SwitchPinStatus = (SwitchPinState == HIGH) ? "N" : "Y";
+  if (SwitchStatus)
+  {
+    ChangedState = true; // for count down timer
+  }
+
+  Serial.print("; Switch input status: ");
+  Serial.print(SwitchStatus);
+
+  
   lcd.setCursor(3,2);
   lcd.print(SwitchPinStatus);
 
   // OverHeat
   //bool OverHeat = 
-  if (t_dht >= (t_ds + 2))
+  if (t_dht >= (t_ds + TemperatureShift))
   {
-    OverHeat = true;
+    OverHeat = true; // true - FAN Should be RUN
+    ChangedState = true;
+  }
+  else if (t_dht < (t_ds + 1))
+  {
+    OverHeat = false;
   }
   else
   {
-    if (t_dht < (t_ds + 1))
-    {
-      OverHeat = false;
-    }
+    OverHeat = false;
   }
-  String OverHeatStatus = (OverHeat) ? "YES" : "NO";
-  lcd.setCursor(9,2);
+  String OverHeatStatus = (OverHeat) ? "Y" : "N";
+  lcd.setCursor(7,2);
   lcd.print(OverHeatStatus);
+  lcd.setCursor(8,2);
+  lcd.print((t_dht-t_ds),0);
 
   // Timer Status
-
-  String RelayPinStatus = (RelayPinState == true) ? "ON" : "OFF"; 
-  lcd.setCursor(17,2);
-  lcd.print(RelayPinStatus);
-
-  
-  // if (Temperature from outside sensor + 2) >= temperature inside box = Shiould run Cooling Fan
-  if ( (t_dht >= (t_ds +2)) or digitalRead(SwitchPin) == LOW)
+  Serial.print("; t Alarm/Switch is Active: ");
+  Serial.print(ChangedState);
+  Serial.print("; t different (DHT-DS): ");
+  Serial.print((t_dht-t_ds),2);
+  if (ChangedState)
   {
-    digitalWrite(RelayPin, HIGH);
-    TimeFromStart = millis();
-    //lcd.setCursor(0,2);
-    //lcd.print("Switch: 1  Relay: 1 ");
-    
+    // reset last changed time 
+    ChangedStateTime = millis()/1000;
+    // and reset event
+    ChangedState = false;
+  }
+  int CountSec = millis()/1000 - ChangedStateTime;
+
+
+  if (CountSec < RunDelay)
+  {
+    TimerState = true;
+    CountDown = RunDelay - CountSec;
   }
   else 
   {
-    if (t_dht <= t_ds +0.5 and digitalRead(SwitchPin) == HIGH and (millis() > (TimeFromStart + 10000)) )
-    {
-      //lcd.setCursor(0,2);
-      //lcd.print("Switch: 0  Relay: 0 ");
-     
-      digitalWrite(RelayPin, LOW);      
-    }
+    TimerState = true;
+    CountDown = 0;
+    
   }
+  //Serial.print("; Timer: ");
+  //Serial.print(TimerState);
+  Serial.print("; CountDown to OFF: ");
+  Serial.print(CountDown);
 
-  /*
-  // Switch
-  if (SwitchPin == LOW)
+  lcd.setCursor(13,2);
+  lcd.print(CountDown);
+
+
+  String RelayPinStatus = (CountDown > 0) ? "1" : "0"; 
+  lcd.setCursor(19,2);
+  lcd.print(RelayPinStatus);
+
+  Serial.print("; Relay is: ");
+  
+  if (CountDown > 0)
   {
-    RelayPin = HIGH;
+    digitalWrite(RelayPin, HIGH);
+    Serial.println("ON");
   }
-  else if ()
-*/
-
-  //lcd.setCursor(0,2);
-  //lcd.print("Arduino LCM IIC 2004");
-  // lcd.setCursor(2,3);
-   
-  //lcd.print("Power By Ec-yuan!");lcd.setCursor(0,0);
-
-     //Serial.println("  !");
-  /*
-  lcd.print("WTF, world?");
-  lcd.setCursor(1,0);
-  lcd.print("TF, world?");
-  lcd.setCursor(2,0);
-  lcd.print("F, world?");
-*/}
+  else 
+  {
+    digitalWrite(RelayPin, LOW);      
+    Serial.println("OFF");
+  }
+}
