@@ -1,4 +1,3 @@
-//YWROBOT
 //Compatible with the Arduino IDE 1.0
 //Library version:1.1
 #include <Wire.h> 
@@ -10,7 +9,7 @@
 #define DHTPIN 2
 #define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
 
-#define ONE_WIRE_BUS 3
+#define ONE_WIRE_BUS 3    // DS18B20 Pin
 
 int RelayPin = 5;  // Relay Pin (Relay for cooling Fan)
 int SwitchPin = 4; // Input Switch (Spindle is Run)
@@ -35,8 +34,6 @@ bool OverHeat = false;
 
 bool RelayPinState = false;
 
-
-
 // Timer
 //int TimeFromStart = 0;
 // Changed state (OverHeat is ON / Switch input is ON
@@ -46,10 +43,10 @@ long ChangedStateTime = 0;
 bool TimerState = false;
 int CountDown = 0;
 
+float uptime = 0;
 
 void setup()
 {
-  //delay(1000);
 
   dht.begin();
 
@@ -65,6 +62,8 @@ void setup()
   lcd.print(TemperatureShift);
   lcd.setCursor(0,2);
   lcd.print("Sw:  t:   Tm:    R: ");
+  lcd.setCursor(0,3);
+  lcd.print("UT:            v:1.1");
   
   // Start up the library
   sensors.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
@@ -75,14 +74,12 @@ void setup()
   Serial.begin(9600);
   Serial.println("CNC Monitoring System");
   Serial.println("Cooling FAN Control module");
-  Serial.println("v: 1.0.0");
+  Serial.println("v: 1.1");
 }
 
 
 void loop()
 {
-  //delay(1000);
-
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
   float h = dht.readHumidity();
@@ -98,18 +95,21 @@ void loop()
     lcd.print("Failed to read");
     lcd.setCursor(0,1);
     lcd.print("from DHT sensor!");
-    delay(1000);
+    delay(2000);
     return;
   }
 
-  // DS18B20
+  // DS18B20 read temperature
   sensors.requestTemperatures(); // Send the command to get temperatures
   
 
+  // Uptime
+  uptime = (millis()/1000);
+  lcd.setCursor(3,3);
+  lcd.print(uptime,0);
 
-  lcd.setCursor(0,3);
-  lcd.print(millis());
-
+  Serial.print("Uptime: ");
+  Serial.print(uptime);
 
   // Humidity
   lcd.setCursor(4,0);
@@ -128,34 +128,28 @@ void loop()
   Serial.print("; DS18B20 temp (*C): ");
   Serial.print(t_ds);
 
-
   lcd.setCursor(0,2);
   lcd.print("Sw:  t:   Tm:    R: ");
-
   
   // SWwitch Pin State;
-  //if 
-  int SwitchPinState = digitalRead(SwitchPin);
-  bool SwitchStatus = (SwitchPinState == HIGH) ? false : true; // true - FAN Should be RUN
-  String SwitchPinStatus = (SwitchPinState == HIGH) ? "N" : "Y";
-  if (SwitchStatus)
+  bool SwitchStatus = false;
+  if ( digitalRead(SwitchPin) == LOW )
   {
-    ChangedState = true; // for count down timer
+    SwitchStatus = true;
+    ChangedStateTime = millis()/1000;
   }
 
   Serial.print("; Switch input status: ");
   Serial.print(SwitchStatus);
-
   
   lcd.setCursor(3,2);
-  lcd.print(SwitchPinStatus);
+  lcd.print(SwitchStatus);
 
   // OverHeat
-  //bool OverHeat = 
   if (t_dht >= (t_ds + TemperatureShift))
   {
     OverHeat = true; // true - FAN Should be RUN
-    ChangedState = true;
+    ChangedStateTime = millis()/1000;
   }
   else if (t_dht < (t_ds + 1))
   {
@@ -176,29 +170,18 @@ void loop()
   Serial.print(ChangedState);
   Serial.print("; t different (DHT-DS): ");
   Serial.print((t_dht-t_ds),2);
-  if (ChangedState)
-  {
-    // reset last changed time 
-    ChangedStateTime = millis()/1000;
-    // and reset event
-    ChangedState = false;
-  }
   int CountSec = millis()/1000 - ChangedStateTime;
 
 
   if (CountSec < RunDelay)
   {
-    TimerState = true;
     CountDown = RunDelay - CountSec;
   }
   else 
   {
-    TimerState = true;
     CountDown = 0;
-    
   }
-  //Serial.print("; Timer: ");
-  //Serial.print(TimerState);
+
   Serial.print("; CountDown to OFF: ");
   Serial.print(CountDown);
 
