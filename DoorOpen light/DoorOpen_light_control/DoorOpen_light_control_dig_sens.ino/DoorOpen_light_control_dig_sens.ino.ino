@@ -9,6 +9,7 @@ int LedStrip2 = 11;
 int testLed1 = 13;
 int fadeValue1 = 127;
 int fadeValue2 = 127;
+int maxFade = 30;
 
 bool LedStatus = false; // ON / OFF
 bool LedStatus2 = false; // ON / OFF
@@ -27,7 +28,7 @@ void setup() {
 
 digitalWrite(LedStrip, HIGH);
 digitalWrite(LedStrip2, HIGH);
-  delay(10000);
+  //delay(10000);
 
   Serial.begin(9600);
   while (!Serial) {
@@ -46,6 +47,12 @@ void loop() {
   ReadSW2 = digitalRead(SW2);
   delay(10);
 
+  int sensorValue = analogRead(A4);
+  sensorValue = constrain(sensorValue, 200, 350);
+  // Convert the analog reading
+  maxFade = map(sensorValue, 200, 350, 30, 255);
+
+
   Serial.print("Hall-1: ");
   Serial.print(ReadSW1);
   Serial.print(", Hall-2: ");
@@ -61,7 +68,7 @@ void loop() {
     delay(1000);
 */
 
-  if ( ReadSW1 == 0 and fadeValue1 < 255 )
+  if ( ReadSW1 == 0 and fadeValue1 < maxFade )
   {
     fadeValue1++;
     analogWrite(LedStrip, fadeValue1);
@@ -72,7 +79,7 @@ void loop() {
     analogWrite(LedStrip, fadeValue1);
   }
 
-  if ( ReadSW2 == 0 and fadeValue2 < 255 )
+  if ( ReadSW2 == 0 and fadeValue2 < maxFade )
   {
     fadeValue2++;
     analogWrite(LedStrip2, fadeValue2);
