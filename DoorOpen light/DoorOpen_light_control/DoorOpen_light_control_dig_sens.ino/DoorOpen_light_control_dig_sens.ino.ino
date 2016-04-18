@@ -1,12 +1,14 @@
 
 // OptoSwitch #1
-int SW1 = 8;
-int SW2 = 7;
+int SW1 = 14;
+int SW2 = 16;
 //int OptoSw1Read = 0;
 // Test Led
-int LedStrip = 9;
-int LedStrip2 = 10;
+int LedStrip = 10;
+int LedStrip2 = 11;
 int testLed1 = 13;
+int fadeValue1 = 127;
+int fadeValue2 = 127;
 
 bool LedStatus = false; // ON / OFF
 bool LedStatus2 = false; // ON / OFF
@@ -22,6 +24,10 @@ void setup() {
   // выключаем тестовый светодиод
   digitalWrite(testLed1, LOW);
   digitalWrite(LedStrip, LOW);
+
+digitalWrite(LedStrip, HIGH);
+digitalWrite(LedStrip2, HIGH);
+  delay(10000);
 
   Serial.begin(9600);
   while (!Serial) {
@@ -54,6 +60,31 @@ void loop() {
   digitalWrite(testLed1, HIGH);
     delay(1000);
 */
+
+  if ( ReadSW1 == 0 and fadeValue1 < 255 )
+  {
+    fadeValue1++;
+    analogWrite(LedStrip, fadeValue1);
+  }
+  else if ( ReadSW1 == 1 and fadeValue1 > 0 )
+  {
+    fadeValue1--;
+    analogWrite(LedStrip, fadeValue1);
+  }
+
+  if ( ReadSW2 == 0 and fadeValue2 < 255 )
+  {
+    fadeValue2++;
+    analogWrite(LedStrip2, fadeValue2);
+  }
+  else if ( ReadSW2 == 1 and fadeValue2 > 0 )
+  {
+    fadeValue2--;
+    analogWrite(LedStrip2, fadeValue2);
+  }
+
+/*
+
   if (ReadSW1 == 0)
   {
     if (LedStatus != true) 
@@ -72,7 +103,7 @@ void loop() {
 
     }
     LedStatus = true;
-//*/
+
   }
   if (ReadSW1 == 1) 
   {
@@ -90,7 +121,7 @@ void loop() {
       }
     }
     LedStatus = false;
-//*/
+
   }
   if (ReadSW2 == 0)
   {
@@ -110,7 +141,7 @@ void loop() {
 
     }
     LedStatus2 = true;
-//*/
+
   }
   if (ReadSW2 == 1) 
   {
@@ -128,6 +159,7 @@ void loop() {
       }
     }
     LedStatus2 = false;
-//*/
+
   }
+//*/
 }

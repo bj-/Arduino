@@ -89,10 +89,12 @@ void setup() {
    pinMode(RelayPin, OUTPUT);
 
 // The following lines can be commented out to use the values already stored in the DS1302
+
 /*
-  rtc.setDOW(SATURDAY);        // Set Day-of-Week to FRIDAY
-  rtc.setTime(18, 35, 40);     // Set the time to 12:00:00 (24hr format)
-  rtc.setDate(13, 03, 2016);   // Set the date to August 6th, 2010
+//  rtc.setDOW(SATURDAY);        // Set Day-of-Week to FRIDAY
+  rtc.setDOW(WEDNESDAY);        // Set Day-of-Week to FRIDAY
+  rtc.setTime(07, 58, 40);     // Set the time to 12:00:00 (24hr format)
+  rtc.setDate(13, 04, 2016);   // Set the date to August 6th, 2010
 //*/
 }
 
@@ -122,7 +124,7 @@ void loop() {
   lcd.setCursor(6, 0);
   lcd.print(t.sec, DEC);
 
-/*
+
   // Send Day-of-Week and time
   Serial.print("It is the ");
   Serial.print(t.dow, DEC);
@@ -133,7 +135,7 @@ void loop() {
   Serial.print(":");
   Serial.print(t.sec, DEC);
   Serial.println(";");
-*/
+
  
   lcd.setCursor(0, 1);
   lcd.print(RelayStatus);
