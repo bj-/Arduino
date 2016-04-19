@@ -1,33 +1,42 @@
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
 
-// OptoSwitch #1
-int SW1 = 14;
-int SW2 = 16;
-//int OptoSw1Read = 0;
-// Test Led
-int LedStrip = 10;
-int LedStrip2 = 11;
-int testLed1 = 13;
+LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+
+
+// Switches (ON/OFF Sensors + Opto resistor for power of light reduce)
+int SW1 = 14;           // PC0
+int SW2 = 15;           // PC2
+int OptoResistor = A3;  // PC4
+// LED Strips
+int LedStrip = 10;    // PB2
+int LedStrip2 = 11;   // PB3
+//int testLed1 = 13;    // PB1
+
+
+// common variables
 int fadeValue1 = 127;
 int fadeValue2 = 127;
 int maxFade = 30;
 
-bool LedStatus = false; // ON / OFF
-bool LedStatus2 = false; // ON / OFF
+//bool LedStatus = false; // ON / OFF
+//bool LedStatus2 = false; // ON / OFF
 
 void setup() {
   pinMode(SW1, INPUT);
   pinMode(SW2, INPUT);
-  pinMode(testLed1, OUTPUT);
+//  pinMode(testLed1, OUTPUT);
   pinMode(LedStrip, OUTPUT);
   pinMode(LedStrip2, OUTPUT);
   
 
   // выключаем тестовый светодиод
-  digitalWrite(testLed1, LOW);
+  //digitalWrite(testLed1, LOW);
   digitalWrite(LedStrip, LOW);
+  digitalWrite(LedStrip2, LOW);
 
-digitalWrite(LedStrip, HIGH);
-digitalWrite(LedStrip2, HIGH);
+//digitalWrite(LedStrip, HIGH);
+//digitalWrite(LedStrip2, HIGH);
   //delay(10000);
 
   Serial.begin(9600);
@@ -35,6 +44,14 @@ digitalWrite(LedStrip2, HIGH);
     ; // wait for serial port to connect. Needed for Leonardo only
   }
 
+  lcd.init();                      // initialize the lcd 
+  lcd.init();
+  // backlight is ON
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("Sw1:    Sw2:    ");
+  lcd.setCursor(0,1);
+  lcd.print("OR:    Fade:    ");
 }
 
 void loop() {
@@ -47,16 +64,30 @@ void loop() {
   ReadSW2 = digitalRead(SW2);
   delay(10);
 
-  int sensorValue = analogRead(A4);
-  sensorValue = constrain(sensorValue, 200, 350);
+  int sensorValueRAW = analogRead(OptoResistor);
+  int sensorValue = constrain(sensorValueRAW, 150, 350);
   // Convert the analog reading
-  maxFade = map(sensorValue, 200, 350, 30, 255);
+  maxFade = map(sensorValue, 150, 350, 30, 255);
 
 
-  Serial.print("Hall-1: ");
+  lcd.setCursor(5,0);
+  lcd.print(ReadSW1);
+  lcd.setCursor(13,0);
+  lcd.print(ReadSW2);
+  
+  lcd.setCursor(3,1);
+  lcd.print(sensorValueRAW);
+  lcd.setCursor(12,1);
+  lcd.print(maxFade);
+  
+  Serial.print("Switch-1: ");
   Serial.print(ReadSW1);
-  Serial.print(", Hall-2: ");
-  Serial.println(ReadSW2);
+  Serial.print(", Switch-2: ");
+  Serial.print(ReadSW2);
+  Serial.print(", OptoResistor: ");
+  Serial.print(sensorValue);
+  Serial.print(", maxFade: ");
+  Serial.print(maxFade);
   delay(1);
 
 
