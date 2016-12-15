@@ -70,9 +70,9 @@ void loop() {
   delay(1);
 
   int sensorValueRAW = analogRead(OptoResistor);
-  int sensorValue = constrain(sensorValueRAW, 150, 350);  // require ajust after installation
+  int sensorValue = constrain(sensorValueRAW, 30, 230);  // require ajust after installation
   // Convert the analog reading
-  maxFade = map(sensorValue, 150, 350, 30, 255);    // also ajust
+  maxFade = map(sensorValue, 30, 230, 30, 255);    // also ajust
 
   if ( ReadDSW == 0)  // debug module. for 16*2 LCD on I2C
   {
