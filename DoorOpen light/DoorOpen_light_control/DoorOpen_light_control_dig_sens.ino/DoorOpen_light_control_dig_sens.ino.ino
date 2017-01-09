@@ -88,10 +88,25 @@ void loop() {
   
   lcd.setCursor(4,1);
   lcd.print(sensorValueRAW);
+  if (sensorValueRAW < 100) //Erase 3rd digit when value has 2 didits
+  {
+    lcd.setCursor(6,1);
+    lcd.print(" ");
+  }
   lcd.setCursor(13,0);
   lcd.print(sensorValue);
+  if (sensorValue < 100) //Erase 3rd digit when value has 2 didits
+  {
+    lcd.setCursor(15,0);
+    lcd.print(" ");
+  }
   lcd.setCursor(13,1);
   lcd.print(maxFade);
+  if (maxFade < 100) //Erase 3rd digit when value has 2 didits
+  {
+    lcd.setCursor(15,1);
+    lcd.print(" ");
+  }
   
   Serial.print("Switch-1: ");
   Serial.print(ReadSW1);
