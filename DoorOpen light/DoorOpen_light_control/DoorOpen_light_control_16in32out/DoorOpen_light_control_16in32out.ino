@@ -62,60 +62,60 @@ EthernetServer server(80);
 
 // PWM increase decrease step for TLC5940
 #define STEP_INCREASE 5
-#define STEP_DECREASE 1
+#define STEP_DECREASE 5
 
-// Switches (ON/OFF Sensors + Opto resistor for power of light reduce)
-/*
-int SW1 = 14;  // 8;           // PC0
-int SW2 = 15;   //7;           // PC2
-int SW3 = 16;  //4          // PC2
-int SW4 = 17;   //14;           // PC2
-int SW5 = 8;  //15;           // PC2
-int SW6 = 7;   //16;           // PC2
-int SW7 = 6;   //16;           // PC2
-int SW8 = 5;   //16;           // PC2
-*/
 
-// защелка на 74HC165
+// Input to output mappings
+//                          TLC_Ch | 165_Ch | MaxFade | CurrFade |
+int interfacesMapping[32][4] = {
+                              {0,       1,     500,        50     }, 
+                              {1,       1,     500,        50     }, 
+                              {2,       2,     500,        50     }, 
+                              {3,       2,     500,        50     }, 
+                              {4,       3,     500,        50     }, 
+                              {5,       3,     500,        50     }, 
+                              {6,       4,     500,        50     }, 
+                              {7,       4,     500,        50     }, 
+                              {8,       5,     500,        50     }, 
+                              {9,       5,     500,        50     }, 
+                              {10,      6,     500,        50     }, 
+                              {11,      6,     500,        50     }, 
+                              {12,      7,     500,        50     }, 
+                              {13,      7,     500,        50     }, 
+                              {14,      8,     500,        50     }, 
+                              {15,      8,     500,        50     }, 
+                              {16,      9,     500,        50     }, 
+                              {17,      9,     500,        50     }, 
+                              {18,      10,    500,        50     }, 
+                              {19,      10,    500,        50     }, 
+                              {20,      11,    500,        50     }, 
+                              {21,      11,    500,        50     }, 
+                              {22,      12,    500,        50     }, 
+                              {23,      12,    500,        50     }, 
+                              {24,      13,    500,        50     }, 
+                              {25,      13,    500,        50     }, 
+                              {26,      14,    500,        50     }, 
+                              {27,      14,    500,        50     }, 
+                              {28,      15,    500,        50     }, 
+                              {29,      15,    500,        50     }, 
+                              {30,      16,    500,        50     }, 
+                              {31,      16,    500,        50     }, 
+                            };
+
+
+// PIN configuration
+
+// защелка на 74HC165 Latch
 int latchPinIN = 2;
-// выход последовательных данных на 74HC165
+// выход последовательных данных на 74HC165 Data Pin
 int dataPinIN = 8;
-// тактовая ножка
+// тактовая ножка Clock
 int clockPinIN = 5; 
-// переменная считываемых с IN данных
+
+// переменная считываемых с IN данных variable for read inputs state from HC165
 int value_in1 = 0; // переменная первого IN
 int value_in2 = 0; // переменная вторгоо IN
 
-
-// LED Strips TLC Channel
-int LedStrip1 = 1; //11;    // PB2
-int LedStrip2 = 2; //10;   // PB3
-int LedStrip3 = 3; //9;   // PB3
-int LedStrip4 = 4; //6;   // PB3
-int LedStrip5 = 5; //5;   // PB3
-int LedStrip6 = 6; //3;   // PB3
-int LedStrip7 = 7; //3;   // PB3
-int LedStrip8 = 8; //3;   // PB3
-
-
-// common variables
-int fadeValue1 = 50; // default current fade for strip
-int fadeValue2 = 50;
-int fadeValue3 = 50;
-int fadeValue4 = 50;
-int fadeValue5 = 50;
-int fadeValue6 = 50;
-int fadeValue7 = 50;
-int fadeValue8 = 50;
-int fadeValue9 = 50;
-int fadeValue10 = 50;
-int fadeValue11 = 50;
-int fadeValue12 = 50;
-int fadeValue13 = 50;
-int fadeValue14 = 50;
-int fadeValue15 = 50;
-int fadeValue16 = 50;
-int maxFade = 500;  //default max fade
 
 void setup()
 {
@@ -129,17 +129,7 @@ void setup()
   // защелкиваем состояние входных пинов регистра дабы он ничего не ожидал пока.
   digitalWrite(latchPinIN, HIGH); 
   
-/*
- * 
-  pinMode(SW1, INPUT);
-  pinMode(SW2, INPUT);
-  pinMode(SW3, INPUT);
-  pinMode(SW4, INPUT);
-  pinMode(SW5, INPUT);
-  pinMode(SW6, INPUT);
-  pinMode(SW7, INPUT);
-  pinMode(SW8, INPUT);
-*/
+
   /* Call Tlc.init() to setup the tlc.
      You can optionally pass an initial PWM value (0 - 4095) for all channels.*/
  Tlc.init();
@@ -167,7 +157,7 @@ void setup()
    Tlc5940.o file to save the changes. */
 
 
-int setPWMLevel(int sw, int LedStrip, int fadeValue, int maxFade, int channel)
+int setPWMLevel(int sw, int channel, int fadeValue, int maxFade)
 {
 
  
@@ -193,7 +183,7 @@ int setPWMLevel(int sw, int LedStrip, int fadeValue, int maxFade, int channel)
     //analogWrite(LedStrip, fadeValue);
   }
 
-    Tlc.set(LedStrip, fadeValue);
+    Tlc.set(channel, fadeValue);
 
 
   return fadeValue;
@@ -203,7 +193,37 @@ int setPWMLevel(int sw, int LedStrip, int fadeValue, int maxFade, int channel)
    digitalWrite(latchPinIN, LOW);
    digitalWrite(latchPinIN, HIGH);
  }
- 
+
+int readInputState (int channel)
+{
+  // read channel state from HC165. values placed in value_in1, value_in2
+
+  int value = 0;
+  
+  if (channel >= 1 and  channel <= 8)
+  {
+    value = bitRead(value_in1, channel-1);
+  }
+  else if (channel >= 9 and channel <= 16)
+  {
+    value = bitRead(value_in2, channel-9);
+  }
+  else
+  {
+    Serial.print("ERROR: [readInputState] Channel is out of range. Try to read channel [");
+    Serial.print(channel);
+    Serial.println("];");
+  }
+/*
+  Serial.print("[readInputState] Read Channel [");
+  Serial.print(channel);
+  Serial.print("] state is [");
+  Serial.print(value);
+  Serial.println("];");
+*/
+  return value;
+}
+
 void loop()
 {
   
@@ -213,11 +233,11 @@ void loop()
   // Обрабатываем данные со входящих регистры
   digitalWrite(clockPinIN, HIGH);
   latch();
-  value_in1 = shiftIn(dataPinIN, clockPinIN, MSBFIRST);
-  value_in2 = shiftIn(dataPinIN, clockPinIN, MSBFIRST);
+//  value_in1 = shiftIn(dataPinIN, clockPinIN, MSBFIRST);
+//  value_in2 = shiftIn(dataPinIN, clockPinIN, MSBFIRST);
   
-//  value_in2 = shiftIn(dataPinIN, clockPinIN, LSBFIRST);
-//  value_in1 = shiftIn(dataPinIN, clockPinIN, LSBFIRST);
+  value_in2 = shiftIn(dataPinIN, clockPinIN, LSBFIRST);
+  value_in1 = shiftIn(dataPinIN, clockPinIN, LSBFIRST);
 // ----------------------------------------
 
 
@@ -259,39 +279,18 @@ Serial.println(";");
 
 
 // rrrrrrrrrrrrr
-  fadeValue1 = setPWMLevel(bitRead(value_in1, 0), LedStrip1, fadeValue1, maxFade, 1);
-  fadeValue2 = setPWMLevel(bitRead(value_in1, 1), LedStrip2, fadeValue2, maxFade, 2);
-  fadeValue3 = setPWMLevel(bitRead(value_in1, 2), LedStrip3, fadeValue3, maxFade, 3);
-  fadeValue4 = setPWMLevel(bitRead(value_in1, 3), LedStrip4, fadeValue4, maxFade, 4);
-  fadeValue5 = setPWMLevel(bitRead(value_in1, 4), LedStrip5, fadeValue5, maxFade, 5);
-  fadeValue6 = setPWMLevel(bitRead(value_in1, 5), LedStrip6, fadeValue6, maxFade, 6);
-  fadeValue7 = setPWMLevel(bitRead(value_in1, 6), LedStrip7, fadeValue7, maxFade, 7);
-  fadeValue8 = setPWMLevel(bitRead(value_in1, 7), LedStrip8, fadeValue8, maxFade, 8);
-  fadeValue9  = setPWMLevel(bitRead(value_in2, 0), 9,  fadeValue9, maxFade, 9);
-  fadeValue10 = setPWMLevel(bitRead(value_in2, 1), 10, fadeValue10, maxFade, 10);
-  fadeValue11 = setPWMLevel(bitRead(value_in2, 2), 11, fadeValue11, maxFade, 11);
-  fadeValue12 = setPWMLevel(bitRead(value_in2, 3), 12, fadeValue12, maxFade, 12);
-  fadeValue13 = setPWMLevel(bitRead(value_in2, 4), 13, fadeValue13, maxFade, 13);
-  fadeValue14 = setPWMLevel(bitRead(value_in2, 5), 14, fadeValue14, maxFade, 14);
-  fadeValue15 = setPWMLevel(bitRead(value_in2, 6), 15, fadeValue15, maxFade, 15);
-  fadeValue16 = setPWMLevel(bitRead(value_in2, 7), 16, fadeValue16, maxFade, 16);
 
-    Tlc.set(0, maxFade);
-    Tlc.set(17, maxFade);
-    Tlc.set(18, maxFade);
-    Tlc.set(19, maxFade);
-    Tlc.set(20, maxFade);
-    Tlc.set(21, maxFade);
-    Tlc.set(22, maxFade);
-    Tlc.set(23, maxFade);
-    Tlc.set(24, maxFade);
-    Tlc.set(25, maxFade);
-    Tlc.set(26, maxFade);
-    Tlc.set(27, maxFade);
-    Tlc.set(28, maxFade);
-    Tlc.set(29, maxFade);
-    Tlc.set(30, maxFade);
-    Tlc.set(31, maxFade);
+
+  for(int i = 0; i <= 31; i++)
+  {
+    // Set all channels of TLC5940
+    // TLC_Ch | 165_Ch | MaxFade | CurrFade |
+    // interfacesMapping[32][4]
+
+    interfacesMapping[i][3] = setPWMLevel(readInputState(interfacesMapping[i][1]), interfacesMapping[i][0], interfacesMapping[i][3], interfacesMapping[i][2]);
+  
+  }
+
 
     Tlc.update();
 
