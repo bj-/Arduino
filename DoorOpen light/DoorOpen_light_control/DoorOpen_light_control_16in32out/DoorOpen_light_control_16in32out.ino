@@ -48,6 +48,8 @@
     Alex Leone <acleone ~AT~ gmail.com>, 2009-02-03 */
 
 #include "Tlc5940.h"
+#include <SPI.h>
+#include <UIPEthernet.h>
 /*
 #include <SPI.h>
 #include <Ethernet.h>
@@ -64,10 +66,15 @@ EthernetServer server(80);
 #define STEP_INCREASE 5
 #define STEP_DECREASE 5
 
+int maxFadeMin = 0;
+int maxFadeMax = 4095;
+
 
 // Input to output mappings
+const int rows = 32;
+const int cols = 4;
 //                          TLC_Ch | 165_Ch | MaxFade | CurrFade |
-int interfacesMapping[32][4] = {
+int interfacesMapping[rows][cols] = {
                               {0,       1,     500,        50     }, 
                               {1,       1,     500,        50     }, 
                               {2,       2,     500,        50     }, 
@@ -117,6 +124,23 @@ int value_in1 = 0; // переменная первого IN
 int value_in2 = 0; // переменная вторгоо IN
 
 
+// Enter a MAC address and IP address for your controller below.
+// The IP address will be dependent on your local network:
+byte mac[] = {
+  0xDE, 0xAD, 0x8E, 0xEF, 0xFF, 0xED
+};
+IPAddress ip(192, 168, 39, 65);
+
+// Initialize the Ethernet server library
+// with the IP address and port you want to use
+// (port 80 is default for HTTP):
+EthernetServer server(80);
+
+
+String readString = String(30); // строка для выборки данных из адресной строки
+
+
+
 void setup()
 {
 
@@ -142,6 +166,14 @@ void setup()
     ; // wait for serial port to connect. Needed for Leonardo only
   }
 
+
+
+  // start the Ethernet connection and the server:
+  Ethernet.begin(mac, ip);
+  server.begin();
+  Serial.print(F("server is at "));
+  Serial.println(Ethernet.localIP());
+  
 /*
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
@@ -210,9 +242,9 @@ int readInputState (int channel)
   }
   else
   {
-    Serial.print("ERROR: [readInputState] Channel is out of range. Try to read channel [");
+    Serial.print(F("ERROR: [readInputState] Channel is out of range. Try to read channel ["));
     Serial.print(channel);
-    Serial.println("];");
+    Serial.println(F("];"));
   }
 /*
   Serial.print("[readInputState] Read Channel [");
@@ -243,7 +275,9 @@ void loop()
 
 
 
-
+/*
+ *      Input States   to comport
+ *
 Serial.print(bitRead(value_in1, 0));
 Serial.print("-");
 Serial.print(bitRead(value_in1, 1));
@@ -276,7 +310,7 @@ Serial.print(bitRead(value_in2, 6));
 Serial.print("-");
 Serial.print(bitRead(value_in2, 7));
 Serial.println(";");
-
+*/
 
 // rrrrrrrrrrrrr
 
@@ -295,55 +329,134 @@ Serial.println(";");
     Tlc.update();
 
     delay(1);
-/*
+
+
+ 
   // listen for incoming clients
   EthernetClient client = server.available();
   if (client) {
-    Serial.println("new client");
+    Serial.println(F("new client"));
     // an http request ends with a blank line
     boolean currentLineIsBlank = true;
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();
         Serial.write(c);
+
+
+        //Переводим символы из запроса HTTP в стринг
+        if (readString.length() < 30)
+        {  
+          //Сохраняем символы в строку  
+          readString += c; //заменяем readString.append(c);  
+        }   
+
+        
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
-          // send a standard http response header
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: text/html");
-          client.println("Connection: close");  // the connection will be closed after completion of the response
-          client.println("Refresh: 5");  // refresh the page automatically every 5 sec
-          client.println();
-          client.println("<!DOCTYPE HTML>");
-          client.println("<html>");
-          // output the value of each analog input pin
-          for (int analogChannel = 0; analogChannel < 6; analogChannel++) {
-            int sensorReading = analogRead(analogChannel);
-            client.print("analog input ");
-            client.print(analogChannel);
-            client.print(" is ");
-            client.print(sensorReading);
-            client.println("<br />");
-          }
-          /*
-          client.println("<table width='300px'><tr><th>Channel</th><th>Input Sw</th><th>Output Fade</th></tr>");
+
+          Serial.println(readString);
+
+          readString = readString.substring(readString.indexOf(" ")+1);
+          readString = readString.substring(0, readString.indexOf(" "));
+          readString = readString.substring(0, 30); // подрезаем строку на всякий случай. 
+          
+          Serial.println(readString);
 
 
-            client.print("<tr><td>#1");
-            client.print("</td><td>");
-              client.print(bitRead(value_in1, 0));
-            client.print("</td><td>");
-              client.print(fadeValue1);
-            client.println("</td></tr>");
+          if(readString.indexOf("s=") >0 && readString.indexOf("v=") >0)//replaces if(readString.contains("L=1"))  
+          {
+            String channelID = readString.substring(readString.indexOf("s=") + 2, readString.indexOf("&"));
+            String newMaxFade =  readString.substring(readString.indexOf("v=")+2);
+            
+            Serial.print(F("channelID: "));
+            Serial.println(channelID);
+            Serial.print(F("newMaxFade: "));
+            Serial.println(newMaxFade);
+
+            //Serial.print(F("interfacesMapping.length: "));
+            //Serial.println(interfacesMapping[][0].length);
+            
+
+            if ((channelID.toInt() >= 0) && (channelID.toInt() <= (rows - 1)))
+            {
+              if ((newMaxFade.toInt() >= maxFadeMin) && (newMaxFade.toInt() <= maxFadeMax))
+              {
+                int ch_id = channelID.toInt(); 
+                interfacesMapping[ch_id][2] = newMaxFade.toInt();    // MaxFade
+                Serial.print(F("New MaxFade ["));
+                Serial.print(newMaxFade.toInt());
+                Serial.print(F("] for channel ["));
+                Serial.print(channelID.toInt());
+                Serial.println(F("]"));
+              }
+            }
+            
+             
+            // makeAction(serverName, action);
+          }  
+          // обнуляем переменную
+          readString = "";
 
 
           
-          client.println("</table>");
-          */
-   /*       
-          client.println("</html>");
+          // send a standard http response header
+          client.println(F("HTTP/1.1 200 OK"));
+          client.println(F("Content-Type: text/html"));
+          client.println(F("Connection: close"));  // the connection will be closed after completion of the response
+          // client.println(F("Refresh: 5"));  // refresh the page automatically every 5 sec
+          client.println();
+          client.println(F("<!DOCTYPE HTML>"));
+          client.println(F("<html><body>"));
+
+          
+          
+          //client.println(F("<form>"));
+          client.println(F("<form action='/' method='get'><button>Refresh</button></form>"));
+          client.println(F("<table width='500px'><tr><th>TLC Channel</th><th>Input Sw Ch</th><th>Input Sw State</th><th>Output Fade</th><th>Max Fade</th><th width='150px'>Set Max Fade</th></tr>"));
+
+
+
+          for(int i = 0; i <= 31; i++)
+          {
+            // Set all channels of TLC5940
+            // TLC_Ch | 165_Ch | MaxFade | CurrFade |
+            // interfacesMapping[32][4]
+  
+            client.print(F("<tr><td>"));
+            
+            client.print(interfacesMapping[i][0]);  // TLC_Ch
+            client.print(F("</td><td>"));
+            client.print(interfacesMapping[i][1]);    // 165_Ch
+            client.print(F("</td><td>"));
+            client.print(readInputState(interfacesMapping[i][1]));    // 165_Ch State
+            client.print(F("</td><td>"));
+            client.print(interfacesMapping[i][3]);    // CurrFade 
+            client.print(F("</td><td>"));
+            client.print(interfacesMapping[i][2]);    // MaxFade
+            client.print(F("</td><td>"));
+            client.print(F("<form action='/' method='get'><input type='hidden' name='s' value='"));
+            client.print(interfacesMapping[i][0]);  // TLC_Ch
+            client.print(F("' /><input type='text' name='v' value='500' size='4' /><button>Set!</button></form>"));
+            client.println(F("</td></tr>"));
+
+            
+/*
+            // TLC_Ch
+            interfacesMapping[i][0]
+            // 165_Ch
+            readInputState(interfacesMapping[i][1])
+            // MaxFade
+            interfacesMapping[i][2]
+            // CurrFade
+            interfacesMapping[i][3]
+*/  
+          }
+
+          
+          client.println(F("</table></body></html>"));
           break;
         }
         if (c == '\n') {
@@ -359,33 +472,12 @@ Serial.println(";");
     delay(1);
     // close the connection:
     client.stop();
-    Serial.println("client disconnected");
-  }
-  */
-/*
-  EthernetClient client = server.available();
-  if (client) {
-    while (client.connected()) {
-      if (client.available()) 
-      {
+    Serial.println(F("client disconnected"));
 
-          // send a standard http response header
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: text/html");
-          client.println("Connection: close");  // the connection will be closed after completion of the response
-          //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
-          client.println();
-          client.println("<!DOCTYPE HTML>");
-          client.println("<html><h1>Server State Monitor</h1><table width=400 align=center border=1 cellspacing=0>");
-//                          "<h1>FI Network</h1><p>Production servers control system</p>"
-//                          "<table border=1, cellpadding=0, cellspacing=0 width=90%>"
-//                          "<tr><th>ServerName</th><th>State</th><th>Make Action</th></tr>");
-          client.println("</table></html>");
-          break;
-      }
-    }
-    client.stop();
+    //String ssdd = "aaa"+"bbb";
+   
+    //Serial.println(ssdd);
   }
- */
+  
 }
 
