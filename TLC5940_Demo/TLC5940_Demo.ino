@@ -1,3 +1,24 @@
+/*
+    Basic Pin setup (by BitBang protocol):
+    ------------                                  ---u----
+    ARDUINO   13|                           OUT1 |1     28| OUT channel 0
+              12|                           OUT2 |2     27|-> GND (VPRG)
+              11|                           OUT3 |3     26|-> SIN (pin 7)
+              10|                           OUT4 |4     25|-> SCLK (pin 4)
+               9|-> XLAT (pin 24)             .  |5     24|-> XLAT (pin 9)
+               8|                             .  |6     23|-> BLANK (pin 6)
+               7|-> SIN (pin 26)              .  |7     22|-> GND
+               6|-> BLANK (pin 23)            .  |8     21|-> VCC (+5V)
+               5|                             .  |9     20|-> 2K Resistor -> GND
+               4|-> SCLK (pin 25)             .  |10    19|-> +5V (DCPRG)
+               3|-> GSCLK (pin 18)            .  |11    18|-> GSCLK (pin 3)
+               2|                             .  |12    17|-> SOUT
+               1|                             .  |13    16|-> XERR
+               0|                           OUT14|14    15| OUT channel 15
+    ------------                                  --------
+
+*/
+
 #include "Tlc5940.h"
 
 void setup()
@@ -24,38 +45,5 @@ void loop()
 
 
 
-  int direction = 1;
-  for (int channel = 0; channel < NUM_TLCS * 16; channel += direction) {
-
-    /* Tlc.clear() sets all the grayscale values to zero, but does not send
-       them to the TLCs.  To actually send the data, call Tlc.update() */
-    Tlc.clear();
-
-    /* Tlc.set(channel (0-15), value (0-4095)) sets the grayscale value for
-       one channel (15 is OUT15 on the first TLC, if multiple TLCs are daisy-
-       chained, then channel = 16 would be OUT0 of the second TLC, etc.).
-
-       value goes from off (0) to always on (4095).
-
-       Like Tlc.clear(), this function only sets up the data, Tlc.update()
-       will send the data. */
-    if (channel == 0) {
-      direction = 1;
-    } else {
-      Tlc.set(channel - 1, 1000);
-    }
-    Tlc.set(channel, 4095);
-    if (channel != NUM_TLCS * 16 - 1) {
-      Tlc.set(channel + 1, 1000);
-    } else {
-      direction = -1;
-    }
-
-    /* Tlc.update() sends the data to the TLCs.  This is when the LEDs will
-       actually change. */
-    Tlc.update();
-
-    delay(75);
-  }
 
 }  
