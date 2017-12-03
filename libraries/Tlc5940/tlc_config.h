@@ -58,7 +58,7 @@
     any two i/o pins, but the hardware SPI is faster.
     - Bit-Bang = TLC_BITBANG
     - Hardware SPI = TLC_SPI (default) */
-// #define DATA_TRANSFER_MODE    TLC_SPI
+//#define DATA_TRANSFER_MODE    TLC_SPI
 #define DATA_TRANSFER_MODE    TLC_BITBANG
 
 /* This include is down here because the files it includes needs the data

@@ -63,8 +63,10 @@ EthernetServer server(80);
 */
 
 // PWM increase decrease step for TLC5940
-#define STEP_INCREASE 5
+#define STEP_INCREASE 1
 #define STEP_DECREASE 5
+
+#define OPEN_SENSOR_NORMAL_STATE 0 // 0 - nornmal break; 1 - normal connected
 
 int maxFadeMin = 0;
 int maxFadeMax = 4095;
@@ -75,24 +77,24 @@ const int rows = 32;
 const int cols = 4;
 //                          TLC_Ch | 165_Ch | MaxFade | CurrFade |
 int interfacesMapping[rows][cols] = {
-                              {0,       1,     500,        50     }, 
-                              {1,       1,     500,        50     }, 
-                              {2,       2,     500,        50     }, 
-                              {3,       2,     500,        50     }, 
-                              {4,       3,     500,        50     }, 
-                              {5,       3,     500,        50     }, 
-                              {6,       4,     500,        50     }, 
-                              {7,       4,     500,        50     }, 
-                              {8,       5,     500,        50     }, 
-                              {9,       5,     500,        50     }, 
-                              {10,      6,     500,        50     }, 
-                              {11,      6,     500,        50     }, 
-                              {12,      7,     500,        50     }, 
-                              {13,      7,     500,        50     }, 
-                              {14,      8,     500,        50     }, 
-                              {15,      8,     500,        50     }, 
-                              {16,      9,     500,        50     }, 
-                              {17,      9,     500,        50     }, 
+                              {0,       1,     1500,        50     }, 
+                              {1,       1,     1500,        50     }, 
+                              {2,       1,     1500,        50     }, 
+                              {3,       2,     1500,        50     }, 
+                              {4,       2,     1500,        50     }, 
+                              {5,       2,     1500,        50     }, 
+                              {6,       3,     1500,        50     }, 
+                              {7,       3,     1500,        50     }, 
+                              {8,       3,     1500,        50     }, 
+                              {9,       4,     1500,        50     }, 
+                              {10,      4,     1500,        50     }, 
+                              {11,      4,     1500,        50     }, 
+                              {12,      5,     500,        50     }, 
+                              {13,      5,     500,        50     }, 
+                              {14,      5,     500,        50     }, 
+                              {15,      6,     500,        50     }, 
+                              {16,      6,     500,        50     }, 
+                              {17,      6,     500,        50     }, 
                               {18,      10,    500,        50     }, 
                               {19,      10,    500,        50     }, 
                               {20,      11,    500,        50     }, 
@@ -196,21 +198,36 @@ int setPWMLevel(int sw, int channel, int fadeValue, int maxFade)
   int ReadSW = sw; // read door switch
   //delay(1);
 
-  if ( ReadSW == 1 and fadeValue < ( maxFade - STEP_INCREASE ) )
+  if ( ReadSW == OPEN_SENSOR_NORMAL_STATE and fadeValue < ( maxFade - STEP_INCREASE ) )
   {
     //fadeValue++;
     fadeValue = fadeValue + STEP_INCREASE;
     //analogWrite(LedStrip, fadeValue);
   }
-  else if  ( ReadSW == 1 and fadeValue > ( maxFade - STEP_DECREASE ) )
+  else if  ( ReadSW == OPEN_SENSOR_NORMAL_STATE and fadeValue > ( maxFade - STEP_DECREASE ) )
   {
-    fadeValue = fadeValue - STEP_DECREASE;
+    if (fadeValue < STEP_DECREASE) // becouse result can jump over zero
+    {
+      fadeValue = 0;
+    }
+    else
+    {
+      fadeValue = fadeValue - STEP_DECREASE;
+    }
     //fadeValue--;
     //analogWrite(LedStrip, fadeValue);
   }
-  else if ( ReadSW == 0 and fadeValue > 0 )
+  else if ( ReadSW != OPEN_SENSOR_NORMAL_STATE and fadeValue > 0 )
   {
-    fadeValue = fadeValue - STEP_DECREASE;
+    if (fadeValue < STEP_DECREASE) // becouse result can jump over zero
+    {
+      fadeValue = 0;
+    }
+    else
+    {
+      fadeValue = fadeValue - STEP_DECREASE;
+    }
+    // fadeValue = fadeValue - STEP_DECREASE;
     //fadeValue--;
     //analogWrite(LedStrip, fadeValue);
   }

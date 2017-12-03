@@ -85,7 +85,10 @@
 //#define BLANK_PIN    PB0
 //#define BLANK_PORT   PORTB
 //#define BLANK_DDR    DDRB
-#define BLANK_PIN    PD6
+//#define BLANK_PIN    PD6
+//#define BLANK_PORT   PORTD
+//#define BLANK_DDR    DDRD
+#define BLANK_PIN    PD5
 #define BLANK_PORT   PORTD
 #define BLANK_DDR    DDRD
 
