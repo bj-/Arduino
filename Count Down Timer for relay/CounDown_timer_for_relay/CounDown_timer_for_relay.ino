@@ -252,6 +252,8 @@ void loop() {
       digitalWrite(RelayPin, HIGH);
       ignoreButton[2] = true;
       noMusic = false; // reset to default
+      Serial.println("Button3 = click, Relay = switch on");
+
     }
     else if ( buttonClick[2] == true and timerWorking == true and ignoreButton[2] == false and inMenu == false )
     {
@@ -259,6 +261,7 @@ void loop() {
       digitalWrite(RelayPin, LOW);
       ignoreButton[2] = true;
       noMusic = true; // do not play music if stopped manualy
+      Serial.println("Button3 = click, Relay = switch OFF");
     }
 
     
@@ -293,6 +296,8 @@ void loop() {
     {
       digitalWrite(LedStripPin, !digitalRead(LedStripPin));  //invert pin state
       ignoreButton[0] = true;
+      Serial.println("Button1(Led) = click");
+
     }
 
 //  }
@@ -302,6 +307,7 @@ void loop() {
   {
       inMenu = true;
       ignoreButton[1] = true;
+      Serial.println("Button2(Menu) = click");
     }
 
 
