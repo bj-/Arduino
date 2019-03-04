@@ -47,20 +47,11 @@
 
     Alex Leone <acleone ~AT~ gmail.com>, 2009-02-03 */
 
-//#include "Tlc5940.h"
 #include "src\Tlc5940\Tlc5940.h"
+//#include "Tlc5940.h"
 #include <SPI.h>
+/* exclude Eth
 #include <UIPEthernet.h>
-/*
-#include <SPI.h>
-#include <Ethernet.h>
-
-byte mac[] = {
-  0xD1, 0xAD, 0xBA, 0x7F, 0x9A, 0xEF
-};
-IPAddress ip(192, 168, 39, 177);
-
-EthernetServer server(80);
 */
 
 // PWM increase decrease step for TLC5940
@@ -72,44 +63,102 @@ EthernetServer server(80);
 int maxFadeMin = 0;
 int maxFadeMax = 4095;
 
+int DebugSw = 16;
+bool DebugMode = false;
 
 // Input to output mappings
-const int rows = 32;
+//const int rows = 80;
 const int cols = 4;
+const int rows = 80; // With Ethernet module - maximum  48 rows in array
+//const int cols = 4;
+const int defCurrFade = 50;
 //                          TLC_Ch | 165_Ch | MaxFade | CurrFade |
 int interfacesMapping[rows][cols] = {
-                              {0,       11,     1500,        50     }, 
-                              {1,       11,     1500,        50     }, 
-                              {2,       11,     1500,        50     }, 
-                              {3,       11,     1500,        50     }, 
-                              {4,       11,     1500,        50     }, 
-                              {5,       11,     1500,        50     }, 
-                              {6,       11,     1500,        50     }, 
-                              {7,       11,     1500,        50     }, 
-                              {8,       10,     1500,        50     }, 
-                              {9,       10,     1500,        50     }, 
-                              {10,      12,     1500,        50     }, 
-                              {11,      13,     1500,        50     }, 
-                              {12,      11,     1500,        50     }, 
-                              {13,      11,     1500,        50     }, 
-                              {14,      10,     1500,        50     }, 
-                              {15,      11,     1500,        50     }, 
-                              {16,      13,     1500,        50     }, 
-                              {17,      12,     1500,        50     }, 
-                              {18,      10,    1500,        50     }, 
-                              {19,      10,    1500,        50     }, 
-                              {20,      11,    1500,        50     }, 
-                              {21,      11,    1500,        50     }, 
-                              {22,      12,    1500,        50     }, 
-                              {23,      12,    1500,        50     }, 
-                              {24,      13,    1500,        50     }, 
-                              {25,      13,    1500,        50     }, 
-                              {26,      13,    1500,        50     }, 
-                              {27,      13,    1500,        50     }, 
-                              {28,      13,    1500,        50     }, 
-                              {29,      13,    1500,        50     }, 
-                              {30,      13,    1500,        50     }, 
-                              {31,      13,    1500,        50     }, 
+                              {0,       1,     1500,        50     }, 
+                              {1,       1,     1500,        50     }, 
+                              {2,       1,     1500,        50     }, 
+                              {3,       1,     1500,        50     }, 
+                              {4,       2,     1500,        50     }, 
+                              {5,       2,     1500,        50     }, 
+                              {6,       2,     1500,        50     }, 
+                              {7,       2,     1500,        50     }, 
+                              {8,       3,     1500,        50     }, 
+                              {9,       3,     1500,        50     }, 
+                              {10,      3,     1500,        50     }, 
+                              {11,      3,     1500,        50     }, 
+                              {12,      4,     1500,        50     }, 
+                              {13,      4,     1500,        50     }, 
+                              {14,      4,     1500,        50     }, 
+                              {15,      4,     1500,        50     }, 
+                              {16,      5,     1500,        50     }, 
+                              {17,      5,     1500,        50     }, 
+                              {18,      5,    1500,        50     }, 
+                              {19,      5,    1500,        50     }, 
+                              {20,      6,    1500,        50     }, 
+                              {21,      6,    1500,        50     }, 
+                              {22,      6,    1500,        50     }, 
+                              {23,      6,    1500,        50     }, 
+                              {24,      7,    1500,        50     }, 
+                              {25,      7,    1500,        50     }, 
+                              {26,      7,    1500,        50     }, 
+                              {27,      7,    1500,        50     }, 
+                              {28,      8,    1500,        50     }, 
+                              {29,      8,    1500,        50     }, 
+                              {30,      8,    1500,        50     }, 
+                              {31,      8,    1500,        50     }, 
+
+                              {32,      10,    1500,        50     }, 
+                              {33,      10,    1500,        50     }, 
+                              {34,      10,    1500,        50     }, 
+                              {35,      9,    1500,        50     }, 
+                              {36,      9,    1500,        50     }, 
+                              {37,      9,    1500,        50     }, 
+                              {38,      11,    1500,        50     }, 
+                              {39,      11,    1500,        50     }, 
+                              {40,      11,    1500,        50     }, 
+                              {41,      12,    1500,        50     }, 
+                              {42,      12,    1500,        50     }, 
+                              {43,      12,    1500,        50     }, 
+
+                              {44,      14,    1500,        50     }, 
+                              {45,      14,    1500,        50     }, 
+                              {46,      14,    1500,        50     }, 
+                              {47,      13,    1500,        50     }, 
+                              {48,      13,    1500,        50     }, 
+                              {49,      13,    1500,        50     }, 
+                              {50,      15,    1500,        50     }, 
+                              {51,      15,    1500,        50     }, 
+                              {52,      15,    1500,        50     }, 
+                              {53,      16,    1500,        50     }, 
+                              {54,      16,    1500,        50     }, 
+                              {55,      16,    1500,        50     }, 
+
+                              {56,      18,    1500,        50     }, 
+                              {57,      18,    1500,        50     }, 
+                              {58,      18,    1500,        50     }, 
+                              {59,      17,    1500,        50     }, 
+                              {60,      17,    1500,        50     }, 
+                              {61,      17,    1500,        50     }, 
+                              {62,      19,    1500,        50     }, 
+                              {63,      19,    1500,        50     }, 
+                              {64,      19,    1500,        50     }, 
+                              {65,      20,    1500,        50     }, 
+                              {66,      20,    1500,        50     }, 
+                              {67,      20,    1500,        50     }, 
+
+                              {68,      22,    1500,        50     }, 
+                              {69,      22,    1500,        50     }, 
+                              {70,      22,    1500,        50     }, 
+                              {71,      21,    1500,        50     }, 
+                              {72,      21,    1500,        50     }, 
+                              {73,      21,    1500,        50     }, 
+                              {74,      23,    1500,        50     }, 
+                              {75,      23,    1500,        50     }, 
+                              {76,      23,    1500,        50     }, 
+                              {77,      24,    1500,        50     }, 
+                              {78,      24,    1500,        50     }, 
+                              {79,      24,    1500,        50     }, 
+
                             };
 
 
@@ -125,14 +174,16 @@ int clockPinIN = 5;
 // переменная считываемых с IN данных variable for read inputs state from HC165
 int value_in1 = 0; // переменная первого IN
 int value_in2 = 0; // переменная вторгоо IN
+int value_in3 = 0; // переменная третьего IN
 
 
+/* exclude Eth
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {
-  0xDE, 0xAD, 0x8E, 0xEF, 0xFF, 0xED
+  0xDE, 0xAD, 0x8E, 0xEF, 0xFF, 0xEE
 };
-IPAddress ip(192, 168, 39, 65);
+IPAddress ip(192, 168, 39, 66);
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
@@ -141,7 +192,7 @@ EthernetServer server(80);
 
 
 String readString = String(30); // строка для выборки данных из адресной строки
-
+*/
 
 
 void setup()
@@ -152,6 +203,8 @@ void setup()
   pinMode(latchPinIN, OUTPUT);
   pinMode(dataPinIN, INPUT);
   pinMode(clockPinIN, OUTPUT);
+
+  pinMode(DebugSw, INPUT);
   
   // защелкиваем состояние входных пинов регистра дабы он ничего не ожидал пока.
   digitalWrite(latchPinIN, HIGH); 
@@ -169,14 +222,23 @@ void setup()
     ; // wait for serial port to connect. Needed for Leonardo only
   }
 
+  DebugMode = !digitalRead(DebugSw);
+  if ( DebugMode )
+  {
+    Serial.println(F("Started in Debug mode"));
+  }
+  else 
+  {
+    Serial.println(F("Started in Production mode"));
+  }
 
-
+/* exclude Eth
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
   server.begin();
   Serial.print(F("server is at "));
   Serial.println(Ethernet.localIP());
-  
+*/  
 /*
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
@@ -233,6 +295,14 @@ int setPWMLevel(int sw, int channel, int fadeValue, int maxFade)
     //analogWrite(LedStrip, fadeValue);
   }
 
+  if ( DebugMode )
+  {
+    Serial.print(F("Set for channnel: "));
+    Serial.print(channel);
+    Serial.print(F(" fade value: "));
+    Serial.println(fadeValue);
+  }
+  
     Tlc.set(channel, fadeValue);
 
 
@@ -258,6 +328,10 @@ int readInputState (int channel)
   {
     value = bitRead(value_in2, channel-9);
   }
+  else if (channel >= 17 and channel <= 24)
+  {
+    value = bitRead(value_in3, channel-17);
+  }
   else
   {
     Serial.print(F("ERROR: [readInputState] Channel is out of range. Try to read channel ["));
@@ -276,6 +350,7 @@ int readInputState (int channel)
 
 void loop()
 {
+  DebugMode = !digitalRead(DebugSw);
   
   //  Tlc.clear();
 
@@ -286,8 +361,20 @@ void loop()
 //  value_in1 = shiftIn(dataPinIN, clockPinIN, MSBFIRST);
 //  value_in2 = shiftIn(dataPinIN, clockPinIN, MSBFIRST);
   
+  value_in3 = shiftIn(dataPinIN, clockPinIN, LSBFIRST);
   value_in2 = shiftIn(dataPinIN, clockPinIN, LSBFIRST);
   value_in1 = shiftIn(dataPinIN, clockPinIN, LSBFIRST);
+
+  if ( DebugMode )
+  {
+    Serial.print(F("Read from 165: ["));
+    Serial.print(value_in3);
+    Serial.print("] [");
+    Serial.print(value_in2);
+    Serial.print("] [");
+    Serial.print(value_in1);
+    Serial.println("]");
+  }
 // ----------------------------------------
 
 
@@ -333,14 +420,29 @@ Serial.println(";");
 // rrrrrrrrrrrrr
 
 
-  for(int i = 0; i <= 31; i++)
+  for(int i = 0; i <= rows-1; i++)
   {
     // Set all channels of TLC5940
     // TLC_Ch | 165_Ch | MaxFade | CurrFade |
     // interfacesMapping[32][4]
 
+  //int fr = interfacesMapping[i][1];
+  //Serial.print(F("Channel val: "));
+  //Serial.println(interfacesMapping[i][1]);
+/*
+  Serial.print(F("SetPWMLevel: ["));
+  Serial.print(readInputState(interfacesMapping[i][1]));
+  Serial.print("], [");
+  Serial.print(interfacesMapping[i][0]);
+  Serial.print("], [");
+  Serial.print(interfacesMapping[i][3]);
+  Serial.print("], [");
+  Serial.print(interfacesMapping[i][2]);
+  Serial.println("];");
+*/
     interfacesMapping[i][3] = setPWMLevel(readInputState(interfacesMapping[i][1]), interfacesMapping[i][0], interfacesMapping[i][3], interfacesMapping[i][2]);
-  
+
+ 
   }
 
 
@@ -349,7 +451,7 @@ Serial.println(";");
     delay(1);
 
 
- 
+ /* exclude Eth
   // listen for incoming clients
   EthernetClient client = server.available();
   if (client) {
@@ -437,7 +539,7 @@ Serial.println(";");
 
 
 
-          for(int i = 0; i <= 31; i++)
+          for(int i = 0; i <= rows-1; i++)
           {
             // Set all channels of TLC5940
             // TLC_Ch | 165_Ch | MaxFade | CurrFade |
@@ -461,16 +563,16 @@ Serial.println(";");
             client.println(F("</td></tr>"));
 
             
-/*
+
             // TLC_Ch
-            interfacesMapping[i][0]
+            //interfacesMapping[i][0]
             // 165_Ch
-            readInputState(interfacesMapping[i][1])
+            //readInputState(interfacesMapping[i][1])
             // MaxFade
-            interfacesMapping[i][2]
+            //interfacesMapping[i][2]
             // CurrFade
-            interfacesMapping[i][3]
-*/  
+            //interfacesMapping[i][3]
+  
           }
 
           
@@ -496,6 +598,7 @@ Serial.println(";");
    
     //Serial.println(ssdd);
   }
-  
+*/
+
 }
 
