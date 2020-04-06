@@ -177,7 +177,7 @@ void setup()   {
 
 
 unsigned long startTime = 0;  //When count down timer stared
-String addZero = ""; // if minutes or secinds less than 10 - add 0 before value
+String addZero = ""; // if minutes or sec0nds less than 10 - add 0 before value
 bool timerWorking = false;
 //int timeToDown = 2;
 unsigned long timeToDown = 1;
@@ -188,7 +188,7 @@ bool noMusic = false;
 bool Debug = false;
 bool inMenu = false;
 
-// Menu navigation varisbles
+// Menu navigation variables
 int menuCursorPosition = 0;
 int menuCursorPositionMax = 30;
 int menuLevel = 1;
