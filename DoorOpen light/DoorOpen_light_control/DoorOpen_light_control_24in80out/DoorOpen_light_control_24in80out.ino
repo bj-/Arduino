@@ -74,38 +74,39 @@ const int rows = 80; // With Ethernet module - maximum  48 rows in array
 const int defCurrFade = 50;
 //                          TLC_Ch | 165_Ch | MaxFade | CurrFade |
 int interfacesMapping[rows][cols] = {
-                              {0,       1,     1500,        50     }, 
-                              {1,       1,     1500,        50     }, 
-                              {2,       1,     1500,        50     }, 
-                              {3,       1,     1500,        50     }, 
-                              {4,       2,     1500,        50     }, 
-                              {5,       2,     1500,        50     }, 
-                              {6,       2,     1500,        50     }, 
-                              {7,       2,     1500,        50     }, 
-                              {8,       3,     1500,        50     }, 
-                              {9,       3,     1500,        50     }, 
-                              {10,      3,     1500,        50     }, 
-                              {11,      3,     1500,        50     }, 
-                              {12,      4,     1500,        50     }, 
-                              {13,      4,     1500,        50     }, 
-                              {14,      4,     1500,        50     }, 
-                              {15,      4,     1500,        50     }, 
-                              {16,      5,     1500,        50     }, 
-                              {17,      5,     1500,        50     }, 
-                              {18,      5,    1500,        50     }, 
-                              {19,      5,    1500,        50     }, 
-                              {20,      6,    1500,        50     }, 
-                              {21,      6,    1500,        50     }, 
-                              {22,      6,    1500,        50     }, 
-                              {23,      6,    1500,        50     }, 
-                              {24,      7,    1500,        50     }, 
-                              {25,      7,    1500,        50     }, 
-                              {26,      7,    1500,        50     }, 
-                              {27,      7,    1500,        50     }, 
-                              {28,      8,    1500,        50     }, 
-                              {29,      8,    1500,        50     }, 
-                              {30,      8,    1500,        50     }, 
-                              {31,      8,    1500,        50     }, 
+                              {0,       1,     500,        50     }, 
+                              {1,       1,     500,        50     }, 
+                              {2,       1,     500,        50     }, 
+                              {3,       1,     500,        50     }, 
+                              {4,       1,     500,        50     }, 
+                              {5,       1,     500,        50     }, 
+                              {6,       1,     500,        50     }, 
+                              {7,       1,     500,        50     }, 
+                              {8,       1,     500,        50     }, 
+                              {9,       1,     500,        50     }, 
+                              {10,      1,     500,        50     }, 
+                              {11,      1,     500,        50     }, 
+                              {12,      1,     500,        50     }, 
+                              {13,      1,     500,        50     }, 
+                              {14,      1,     500,        50     }, 
+                              {15,      1,     500,        50     }, 
+                              
+                              {16,      2,     4095,        50     }, 
+                              {17,      2,     4095,        50     }, 
+                              {18,      2,    4095,        50     }, 
+                              {19,      2,    4095,        50     }, 
+                              {20,      2,    4095,        50     }, 
+                              {21,      2,    4095,        50     }, 
+                              {22,      2,    4095,        50     }, 
+                              {23,      2,    4095,        50     }, 
+                              {24,      2,    4095,        50     }, 
+                              {25,      2,    4095,        50     }, 
+                              {26,      2,    4095,        50     }, 
+                              {27,      2,    4095,        50     }, 
+                              {28,      2,    4095,        50     }, 
+                              {29,      2,    4095,        50     }, 
+                              {30,      2,    4095,        50     }, 
+                              {31,      2,    4095,        50     }, 
 
                               {32,      10,    1500,        50     }, 
                               {33,      10,    1500,        50     }, 
@@ -440,8 +441,26 @@ Serial.println(";");
   Serial.print(interfacesMapping[i][2]);
   Serial.println("];");
 */
-    interfacesMapping[i][3] = setPWMLevel(readInputState(interfacesMapping[i][1]), interfacesMapping[i][0], interfacesMapping[i][3], interfacesMapping[i][2]);
+    if ( i >= 0 && i <= 15 )
+    {
+      int iState;
+      iState = 1;
+      if ( !readInputState(1) == 0 || !readInputState(2) == 0 )
+      {
+        iState = 0;
+      }
+      interfacesMapping[i][3] = setPWMLevel(iState, interfacesMapping[i][0], interfacesMapping[i][3], interfacesMapping[i][2]);
 
+      //interfacesMapping[i][3] = setPWMLevel(!readInputState(interfacesMapping[i][1]), interfacesMapping[i][0], interfacesMapping[i][3], interfacesMapping[i][2]);
+    }
+    else if ( i >= 16 && i <= 31 )
+    {
+      interfacesMapping[i][3] = setPWMLevel(!readInputState(interfacesMapping[i][1]), interfacesMapping[i][0], interfacesMapping[i][3], interfacesMapping[i][2]);
+    }
+    else
+    {
+      interfacesMapping[i][3] = setPWMLevel(readInputState(interfacesMapping[i][1]), interfacesMapping[i][0], interfacesMapping[i][3], interfacesMapping[i][2]);
+    }
  
   }
 
@@ -601,4 +620,3 @@ Serial.println(";");
 */
 
 }
-
