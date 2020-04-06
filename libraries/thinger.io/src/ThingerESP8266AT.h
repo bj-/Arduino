@@ -24,6 +24,9 @@
 #ifndef THINGER_ESP8266_AT_H
 #define THINGER_ESP8266_AT_H
 
+// TinyGSM can be installed from Library Manager or https://github.com/vshymanskyy/TinyGSM
+#define TINY_GSM_MODEM_ESP8266
+#include <TinyGsmClient.h>
 #include "ThingerClient.h"
 
 class ThingerESP8266AT : public ThingerClient{
@@ -44,13 +47,16 @@ public:
 protected:
 
     virtual bool network_connected(){
-        return false;
+        return serial_.isNetworkConnected();
     }
 
     virtual bool connect_network(){
         return serial_.networkConnect(wifi_ssid_, wifi_password_);
     }
 
+    virtual bool secure_connection(){
+        return false;
+    }
 
 public:
 
@@ -65,7 +71,6 @@ protected:
     TinyGsm::GsmClient client_;
     const char* wifi_ssid_;
     const char* wifi_password_;
-
 
 };
 

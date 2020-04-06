@@ -31,9 +31,9 @@ class ThingerWifiClient : public ThingerClient {
 
 public:
     ThingerWifiClient(const char* user, const char* device, const char* device_credential) :
+            ThingerClient(client_, user, device, device_credential),
             wifi_ssid_(NULL),
-            wifi_password_(NULL),
-            ThingerClient(client_, user, device, device_credential)
+            wifi_password_(NULL)
     {}
 
     ~ThingerWifiClient(){
@@ -51,7 +51,7 @@ protected:
             THINGER_DEBUG("NETWORK", "Cannot connect to WiFi. SSID not set!");
         }
 
-        long wifi_timeout = millis();
+        unsigned long wifi_timeout = millis();
         THINGER_DEBUG_VALUE("NETWORK", "Connecting to network ", wifi_ssid_);
 
         if(wifi_password_!=NULL){

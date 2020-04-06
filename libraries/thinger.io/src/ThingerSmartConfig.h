@@ -24,6 +24,7 @@
 #ifndef THINGER_SMARTCONFIG_H
 #define THINGER_SMARTCONFIG_H
 
+#include <ESP8266WiFi.h>
 #include "ThingerClient.h"
 
 #define WIFI_CONNECTION_TIMEOUT_MS 15000
@@ -60,7 +61,7 @@ protected:
         // try to connect to the last known Wifi Network
         if(WiFi.SSID()!=NULL){
             THINGER_DEBUG_VALUE("NETWORK", "Trying to connect to the last known network: ", WiFi.SSID());
-            long wifi_timeout = millis();
+            unsigned long wifi_timeout = millis();
             WiFi.begin(WiFi.SSID().c_str(), WiFi.psk().c_str());
             while(WiFi.status() != WL_CONNECTED && (millis() - wifi_timeout < WIFI_CONNECTION_TIMEOUT_MS)) {
                 yield();
@@ -74,7 +75,7 @@ protected:
 
         // if not success connection then start the SmartConfig
         if(WiFi.status() != WL_CONNECTED){
-            long wifi_timeout = millis();
+            unsigned long wifi_timeout = millis();
             THINGER_DEBUG("NETWORK", "Waiting Smart Config...");
             WiFi.stopSmartConfig();
             WiFi.beginSmartConfig();
@@ -95,7 +96,7 @@ protected:
         }
 
         // ensure that the the ESP8266 get connected to the network
-        long wifi_timeout = millis();
+        unsigned long wifi_timeout = millis();
         while(WiFi.status() != WL_CONNECTED) {
             if(millis() - wifi_timeout > WIFI_CONNECTION_TIMEOUT_MS){
                 THINGER_DEBUG("NETWORK", "Cannot connect to WiFi! Check the credentials!");
@@ -125,15 +126,6 @@ protected:
         THINGER_DEBUG_VALUE("NETWORK", "Got IP Address: ", WiFi.localIP());
         return true;
     }
-
-#ifndef _DISABLE_TLS_
-    virtual bool connect_socket(){
-        return client_.connect(THINGER_SERVER, THINGER_SSL_PORT) && client_.verify(THINGER_TLS_FINGERPRINT, THINGER_TLS_HOST);
-    }
-    virtual bool secure_connection(){
-        return true;
-    }
-#endif
 
 private:
     bool use_led_;

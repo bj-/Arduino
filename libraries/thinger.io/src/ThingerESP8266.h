@@ -24,6 +24,7 @@
 #ifndef THINGER_ESP8266_H
 #define THINGER_ESP8266_H
 
+#include <ESP8266WiFi.h>
 #include "ThingerWifi.h"
 
 #ifndef _DISABLE_TLS_
@@ -35,7 +36,9 @@ class ThingerESP8266 : public ThingerWifiClient<WiFiClient>{
 public:
     ThingerESP8266(const char* user, const char* device, const char* device_credential) :
             ThingerWifiClient(user, device, device_credential)
-    {}
+    {
+
+    }
 
     ~ThingerESP8266(){
 
@@ -44,19 +47,16 @@ public:
 #ifndef _DISABLE_TLS_
 protected:
     virtual bool connect_socket(){
-        if(client_.connect(THINGER_SERVER, THINGER_SSL_PORT)){
-            if(client_.verify(THINGER_TLS_FINGERPRINT, THINGER_TLS_HOST)){
-#ifdef _DEBUG_
-                THINGER_DEBUG("_SOCKET", "SSL/TLS Host Verification Succeed!");
+
+    // since CORE 2.5.0, now it is used BearSSL by default
+#ifndef _VALIDATE_SSL_CERTIFICATE_
+        client_.setInsecure();
+        THINGER_DEBUG("SSL/TLS", "Warning: use #define _VALIDATE_SSL_CERTIFICATE_ if certificate validation is required")
+#else
+        client_.setFingerprint(THINGER_TLS_FINGERPRINT);
+        THINGER_DEBUG_VALUE("SSL/TLS", "SHA-1 certificate fingerprint: ", THINGER_TLS_FINGERPRINT)
 #endif
-            }else{
-#ifdef _DEBUG_
-                THINGER_DEBUG("_SOCKET", "SSL/TLS Host Verification Error!");
-#endif
-            }
-            return true;
-        }
-        return false;
+        return client_.connect(get_host(), THINGER_SSL_PORT);
     }
 
     virtual bool secure_connection(){

@@ -56,12 +56,12 @@
   #define ENC28J60_CONTROL_CS SPI_CS
 #endif
 
-#if defined(STM32F3)                //This is workaround for stm32duino STM32F3
+#if defined(STM32F3) || defined(STM32F2)                //This is workaround for stm32duino STM32F2, and adafruit wiced feather STM32F2
   #define BOARD_SPI1_NSS_PIN        PA4
   #define BOARD_SPI1_SCK_PIN        PA5
   #define BOARD_SPI1_MISO_PIN       PA6
   #define BOARD_SPI1_MOSI_PIN       PA7
-#endif                              //This is workaround for stm32duino STM32F3
+#endif                              			//This is workaround for stm32duino STM32F3, and adafruit wiced feather STM32F2
 
 #if defined(BOARD_discovery_f4)
   #define __STM32F4__
@@ -73,20 +73,32 @@
 #if !defined(ENC28J60_CONTROL_CS)
    #if defined(__AVR__) || defined(ESP8266) || defined(__RFduino__)
       // Arduino Uno (__AVR__) SS defined to pin 10
+      // Arduino Leonardo (ARDUINO_AVR_LEONARDO) SS defined to LED_BUILTIN_RX (17)
       // Arduino Mega(__AVR_ATmega2560__) SS defined to pin 53
       // ESP8266 (ESP8266) SS defined to pin 15
-      #define ENC28J60_CONTROL_CS     SS
+      #if defined(ARDUINO_AVR_LEONARDO) || defined(ARDUINO_AVR_MICRO)
+        #define ENC28J60_CONTROL_CS     PIN_A10
+        #warning "Using LEONARDO borad PIN_A10 for ENC28J60_CONTROL_CS. Use UIPEthernet::init(uint8_t) to change it."
+      #else
+        #define ENC28J60_CONTROL_CS     SS
+      #endif
    #elif defined(ARDUINO_ARCH_AMEBA) //Defined SS to pin 10
       #define ENC28J60_CONTROL_CS     SS //PC_0 A5 10
    #elif defined(ARDUINO_ARCH_SAM)
       // Arduino Due (ARDUINO_ARCH_SAM) BOARD_SPI_DEFAULT_SS (SS3) defined to pin 78
       //#define ENC28J60_CONTROL_CS     BOARD_SPI_DEFAULT_SS
       #define ENC28J60_CONTROL_CS     BOARD_SPI_SS0
+   #elif defined(ARDUINO_ARCH_SAMD)
+      #define ENC28J60_CONTROL_CS     SS
    #elif defined(__ARDUINO_ARC__) //Intel ARC32 Genuino 101
       #define ENC28J60_CONTROL_CS     SS
    #elif defined(__RFduino__) //RFduino
       #define ENC28J60_CONTROL_CS     SS
-   #elif defined(STM32_MCU_SERIES) || defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__)
+   #elif defined(ARDUINO_ARCH_STM32) // STM32duino core
+      #define ENC28J60_CONTROL_CS     SS
+   #elif defined(ARDUINO_ARCH_ESP32) // arduino-esp32
+      #define ENC28J60_CONTROL_CS     SS
+   #elif defined(STM32_MCU_SERIES) || defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__) || defined(STM32F2)
       #if defined(BOARD_SPI1_NSS_PIN)
          #define ENC28J60_CONTROL_CS     BOARD_SPI1_NSS_PIN
       #elif defined(ARDUINO_STM32F4_NETDUINO2PLUS)
@@ -98,26 +110,30 @@
    #elif defined(__MK20DX128__) || defined(__MKL26Z64__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
       #define ENC28J60_CONTROL_CS     PIN_SPI_SS
    #endif
-   #if defined(ENC28J60_CONTROL_CS)
-      #warning "Not defined ENC28J60_CONTROL_CS. Use borad default SS pin setting. You can configure in 'utility/Enc28J60Network.h'."
-   #endif
 #endif
 #if !defined(ENC28J60_CONTROL_CS)
-   #error "Not defined ENC28J60_CONTROL_CS!"
+   #warning "Default ENC28J60_CONTROL_CS could not be defined! Use UIPEthernet::init(uint8_t) to set it."
+   #define ENC28J60_CONTROL_CS 0
 #endif
+
+extern uint8_t ENC28J60ControlCS;
 
 #if !defined(SPI_MOSI)
    #if defined(__AVR__) || defined(ESP8266) || defined(__RFduino__)
       #define SPI_MOSI MOSI
    #elif defined(ARDUINO_ARCH_AMEBA)
       #define SPI_MOSI 11 //PC_2
-   #elif defined(ARDUINO_ARCH_SAM)
+   #elif defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_SAMD)
       #define SPI_MOSI PIN_SPI_MOSI
    #elif defined(__ARDUINO_ARC__) //Intel ARC32 Genuino 101
       #define SPI_MOSI MOSI
    #elif defined(__RFduino__) //RFduino
       #define SPI_MOSI MOSI
-   #elif defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__)
+   #elif defined(ARDUINO_ARCH_STM32) // STM32duino core
+      #define SPI_MOSI MOSI
+   #elif defined(ARDUINO_ARCH_ESP32) // arduino-esp32
+      #define SPI_MOSI MOSI
+   #elif defined(STM32_MCU_SERIES) || defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__) || defined(STM32F2)
       #if defined(BOARD_SPI1_MOSI_PIN)
          #define SPI_MOSI BOARD_SPI1_MOSI_PIN
       #else
@@ -136,13 +152,17 @@
       #define SPI_MISO MISO
    #elif defined(ARDUINO_ARCH_AMEBA)
       #define SPI_MISO 12 //PC_3
-   #elif defined(ARDUINO_ARCH_SAM)
+   #elif defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_SAMD)
       #define SPI_MISO PIN_SPI_MISO
    #elif defined(__ARDUINO_ARC__) //Intel ARC32 Genuino 101
       #define SPI_MISO MISO
    #elif defined(__RFduino__) //RFduino
       #define SPI_MISO MISO
-   #elif defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__)
+   #elif defined(ARDUINO_ARCH_STM32) // STM32duino core
+      #define SPI_MISO MISO
+   #elif defined(ARDUINO_ARCH_ESP32) // arduino-esp32
+      #define SPI_MISO MISO
+   #elif defined(STM32_MCU_SERIES) || defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__) || defined(STM32F2)
       #if defined(BOARD_SPI1_MISO_PIN)
          #define SPI_MISO BOARD_SPI1_MISO_PIN
       #else
@@ -160,13 +180,17 @@
       #define SPI_SCK SCK
    #elif defined(ARDUINO_ARCH_AMEBA)
       #define SPI_SCK 13 //PC_1 A4
-   #elif defined(ARDUINO_ARCH_SAM)
+   #elif defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_SAMD)
       #define SPI_SCK PIN_SPI_SCK
    #elif defined(__ARDUINO_ARC__) //Intel ARC32 Genuino 101
       #define SPI_SCK SCK
    #elif defined(__RFduino__) //RFduino
       #define SPI_SCK SCK
-   #elif defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__)
+   #elif defined(ARDUINO_ARCH_STM32) // STM32duino core
+      #define SPI_SCK SCK
+   #elif defined(ARDUINO_ARCH_ESP32) // arduino-esp32
+      #define SPI_SCK SCK
+   #elif defined(STM32_MCU_SERIES) || defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__) || defined(STM32F2)
       #if defined(BOARD_SPI1_SCK_PIN)
          #define SPI_SCK BOARD_SPI1_SCK_PIN
       #else
@@ -180,7 +204,7 @@
    #error "Not defined SPI_SCK!"
 #endif
 
-#if defined(__MBED__) || defined(ARDUINO_ARCH_SAM) || defined(__ARDUINO_ARC__) || defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__) || defined(ESP8266) || defined(ARDUINO_ARCH_AMEBA) || defined(__MK20DX128__) || defined(__MKL26Z64__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__RFduino__)
+#if defined(__MBED__) || defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_SAMD) || defined(__ARDUINO_ARC__) || defined(__STM32F1__) || defined(__STM32F3__) || defined(STM32F3) || defined(__STM32F4__) || defined(STM32F2) || defined(ESP8266) || defined(ARDUINO_ARCH_AMEBA) || defined(__MK20DX128__) || defined(__MKL26Z64__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__RFduino__) || defined(ARDUINO_ARCH_STM32) || defined(ARDUINO_ARCH_ESP32)
    #if defined(ARDUINO) && defined(STM32F3)
       #include "HardwareSPI.h"
    #else

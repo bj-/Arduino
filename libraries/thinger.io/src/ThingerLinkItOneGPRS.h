@@ -24,6 +24,9 @@
 #ifndef THINGER_LINKITONE_H
 #define THINGER_LINKITONE_H
 
+#include <LGPRS.h>
+#include <LGPRSClient.h>
+
 #include "ThingerClient.h"
 
 class ThingerLinkItOneGPRS : public ThingerClient {
@@ -44,7 +47,7 @@ protected:
     }
 
     virtual bool connect_network(){
-        long gprs_timeout = millis();
+        unsigned long gprs_timeout = millis();
         THINGER_DEBUG("NETWORK", "Connecting to GPRS...");
         while(!attachGPRS())
         {
@@ -54,6 +57,10 @@ protected:
         connected_ = true;
         THINGER_DEBUG("NETWORK", "Connected to GPRS!");
         return connected_;
+    }
+
+    virtual bool secure_connection(){
+        return false;
     }
 
 public:

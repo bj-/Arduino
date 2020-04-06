@@ -24,6 +24,7 @@
 #ifndef THINGER_WIFI101_H
 #define THINGER_WIFI101_H
 
+#include <WiFi101.h>
 #include "ThingerWifi.h"
 
 class ThingerWifi101 : public ThingerWifiClient<WiFiClient> {
@@ -40,10 +41,7 @@ public:
 #ifndef _DISABLE_TLS_
 protected:
     virtual bool connect_socket(){
-        return client_.connectSSL(THINGER_SERVER, THINGER_SSL_PORT);
-    }
-    virtual bool secure_connection(){
-        return true;
+        return client_.connectSSL(get_host(), THINGER_SSL_PORT);
     }
 #endif
 

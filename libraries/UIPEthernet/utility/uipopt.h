@@ -61,13 +61,44 @@
 #define __UIPOPT_H__
 
 #ifndef UIP_LITTLE_ENDIAN
-#define UIP_LITTLE_ENDIAN  3412
+  #if defined(LITTLE_ENDIAN)
+    #define UIP_LITTLE_ENDIAN LITTLE_ENDIAN
+  #elif defined(__ORDER_LITTLE_ENDIAN__)
+    #define UIP_LITTLE_ENDIAN __ORDER_LITTLE_ENDIAN__
+  #else
+    #define UIP_LITTLE_ENDIAN 1234
+  #endif
 #endif /* UIP_LITTLE_ENDIAN */
 #ifndef UIP_BIG_ENDIAN
-#define UIP_BIG_ENDIAN     1234
+  #if defined(BIG_ENDIAN)
+    #define UIP_BIG_ENDIAN BIG_ENDIAN
+  #elif defined(__ORDER_BIG_ENDIAN__)
+    #define UIP_BIG_ENDIAN __ORDER_BIG_ENDIAN__
+  #else
+    #define UIP_BIG_ENDIAN 4321
+  #endif
 #endif /* UIP_BIG_ENDIAN */
+#ifndef UIP_PDP_ENDIAN
+  #if defined(PDP_ENDIAN)
+    #define UIP_PDP_ENDIAN PDP_ENDIAN
+  #elif defined(__ORDER_PDP_ENDIAN__)
+    #define UIP_PDP_ENDIAN __ORDER_PDP_ENDIAN__
+  #else
+    #define UIP_PDP_ENDIAN 3412
+  #endif
+#endif /* UIP_PDP_ENDIAN */
 
 #include "uip-conf.h"
+
+#if defined(FORCE_UIP_CONF_BYTE_ORDER)
+  #warning "You forced 'FORCE_UIP_CONF_BYTE_ORDER' in 'utility/uip-conf.h'."
+  #define UIP_CONF_BYTE_ORDER      FORCE_UIP_CONF_BYTE_ORDER
+#elif defined(__BYTE_ORDER__)
+  #warning "Endianness configured automaticaly."
+  #define UIP_CONF_BYTE_ORDER      __BYTE_ORDER__
+#else
+  #error "You must set FORCE_UIP_CONF_BYTE_ORDER in 'utility/uip-conf.h'."
+#endif
 
 /*------------------------------------------------------------------------------*/
 
@@ -428,6 +459,21 @@
 #else /* UIP_CONF_BROADCAST */
 #define UIP_BROADCAST 0
 #endif /* UIP_CONF_BROADCAST */
+
+/**
+ * Switches how entries are added to the ARP table. The original UIP 
+ * implementation just adds all received packets. By default this is 
+ * turned off and entries are added only when we receive an ARP reply 
+ * or when we send out a packet.
+ * 
+ * \hideinitializer
+ *
+ */
+#ifndef UIP_CONF_ADD_ALL_BROADCAST_TO_ARP
+#define UIP_ADD_ALL_BROADCAST_TO_ARP 0
+#else
+#define UIP_ADD_ALL_BROADCAST_TO_ARP UIP_CONF_ADD_ALL_BROADCAST_TO_ARP
+#endif 
 
 /**
  * Print out a uIP log message.

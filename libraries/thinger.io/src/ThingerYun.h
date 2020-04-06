@@ -24,6 +24,7 @@
 #ifndef THINGER_YUN_H
 #define THINGER_YUN_H
 
+#include <BridgeSSLClient.h>
 #include "ThingerClient.h"
 
 class ThingerYun : public ThingerClient {
@@ -36,8 +37,12 @@ public:
     ~ThingerYun(){}
 
 private:
-    
-    YunClient client_;
+#ifndef _DISABLE_TLS_
+    BridgeSSLClient client_;
+#else
+    BridgeClient client_;
+#endif
+
 };
 
 #endif

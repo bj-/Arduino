@@ -24,6 +24,10 @@
 #ifndef THINGER_LINKITONE_H
 #define THINGER_LINKITONE_H
 
+#include <LTask.h>
+#include <LWiFi.h>
+#include <LWiFiClient.h>
+
 #include "ThingerClient.h"
 
 class ThingerLinkItOneWifi : public ThingerClient {
@@ -44,7 +48,7 @@ protected:
     }
 
     virtual bool connect_network(){
-        long wifi_timeout = millis();
+        unsigned long wifi_timeout = millis();
         THINGER_DEBUG_VALUE("NETWORK", "Connecting to network ", wifi_ssid_);
         LWiFi.begin();
         while(LWiFi.connect((char*)wifi_ssid_, LWiFiLoginInfo(LWIFI_WPA, wifi_password_))<=0) {
@@ -59,6 +63,10 @@ protected:
         }
         THINGER_DEBUG_VALUE("NETWORK", "Got IP Address: ", LWiFi.localIP());
         return true;
+    }
+
+    virtual bool secure_connection(){
+        return false;
     }
 
 public:

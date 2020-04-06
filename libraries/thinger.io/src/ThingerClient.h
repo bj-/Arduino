@@ -24,13 +24,22 @@
 #ifndef THINGER_CLIENT_H
 #define THINGER_CLIENT_H
 
+#include <Arduino.h>
 #include "thinger/thinger.h"
 
 using namespace protoson;
 
-dynamic_memory_allocator alloc;
-//circular_memory_allocator<512> alloc;
-memory_allocator& protoson::pool = alloc;
+#ifndef THINGER_DO_NOT_INIT_MEMORY_ALLOCATOR
+    #ifndef THINGER_USE_STATIC__MEMORY
+        dynamic_memory_allocator alloc;
+    #else
+        #ifndef THINGER_STATIC_MEMORY_SIZE
+            #define THINGER_STATIC_MEMORY_SIZE 512
+        #endif
+        circular_memory_allocator<THINGER_STATIC_MEMORY_SIZE> alloc;
+    #endif
+    memory_allocator& protoson::pool = alloc;
+#endif
 
 #ifndef THINGER_SERVER
     #define THINGER_SERVER "iot.thinger.io"
@@ -45,15 +54,26 @@ memory_allocator& protoson::pool = alloc;
 #endif
 
 #ifndef THINGER_TLS_FINGERPRINT
-    #define THINGER_TLS_FINGERPRINT "C3 90 0E 8B CB 2D 7A 32 1B 55 5C 00 FA 7B 39 5E 53 BC D2 8F"
+    #define THINGER_TLS_FINGERPRINT "B8 DE 87 81 84 7D F0 83 71 95 6E E6 E2 97 50 54 C6 78 AF A3"
 #endif
 
 #ifndef THINGER_TLS_HOST
     #define THINGER_TLS_HOST "thinger.io"
 #endif
 
-#define RECONNECTION_TIMEOUT 5000   // milliseconds
-#define DEFAULT_READ_TIMEOUT 30000  // milliseconds
+#ifndef RECONNECTION_TIMEOUT
+    #define RECONNECTION_TIMEOUT 5000   // milliseconds
+#endif
+
+#ifndef DEFAULT_READ_TIMEOUT
+    #define DEFAULT_READ_TIMEOUT 10000   // milliseconds
+#endif
+
+// set to 0 to increase buffer as required (less performing but memory saving!)
+#ifndef THINGER_OUTPUT_BUFFER_GROWING_SIZE
+    #define THINGER_OUTPUT_BUFFER_GROWING_SIZE 32
+#endif
+
 
 #ifdef _DEBUG_
     #define THINGER_DEBUG(type, text) Serial.print("["); Serial.print(F(type)); Serial.print("] "); Serial.println(F(text));
@@ -67,8 +87,14 @@ class ThingerClient : public thinger::thinger {
 
 public:
     ThingerClient(Client& client, const char* user, const char* device, const char* device_credential) :
-            client_(client), username_(user), device_id_(device), device_password_(device_credential),
-            temp_data_(NULL), out_size_(0)
+            client_(client),
+            username_(user),
+            device_id_(device),
+            device_password_(device_credential),
+            host_(THINGER_SERVER)
+#ifndef THINGER_DISABLE_OUTPUT_BUFFER
+            ,out_buffer_(NULL), out_size_(0), out_total_size_(0)
+#endif
     {
     }
 
@@ -81,7 +107,7 @@ protected:
 
     virtual bool read(char* buffer, size_t size)
     {
-        long start = millis();
+        unsigned long start = millis();
         size_t total_read = 0;
         //THINGER_DEBUG_VALUE("THINGER", "Reading bytes: ", size);
         while(total_read<size){
@@ -91,56 +117,139 @@ protected:
             #else
             int read = client_.readBytes((char*)buffer+total_read, size-total_read);
             #endif
+            //THINGER_DEBUG_VALUE("THINGER", "Read bytes: ", read);
             total_read += read;
-            if(read<=0 && (!client_.connected() || abs(millis()-start)>=DEFAULT_READ_TIMEOUT)){
+
+            /**
+             * Check reading timeout
+             */
+            if(read<=0 && abs(millis()-start)>=DEFAULT_READ_TIMEOUT){
                 #ifdef _DEBUG_
                 THINGER_DEBUG("_SOCKET", "Cannot read from socket!");
                 #endif
                 return false;
             }
+
+            /*
+             * Without a small delays between readings, the MKRGSM1400 seems to miss information, i.e, reading a byte
+             * after a byte. Maybe it is related to UART communication.
+             */
+#ifdef ARDUINO_SAMD_MKRGSM1400
+            delay(2);
+#endif
+
         }
         return total_read == size;
     }
 
-    // TODO Allow removing this Nagle's algorithm implementation if the underlying device already implements it
     virtual bool write(const char* buffer, size_t size, bool flush=false){
+        #ifndef THINGER_DISABLE_OUTPUT_BUFFER
         if(size>0){
-            temp_data_ = (uint8_t*) realloc(temp_data_, out_size_ + size);
-            memcpy(&temp_data_[out_size_], buffer, size);
-            out_size_ += size;
-        }
-        if(flush && out_size_>0){
-            #ifdef _DEBUG_
-            Serial.print(F("[THINGER] Writing bytes: "));
-            Serial.print(out_size_);
+            #ifdef _DEBUG_MEMORY_
+            THINGER_DEBUG_VALUE("_MEMORY", "Writing to Output Buffer: ", size)
             #endif
 
-            size_t written = client_.write(temp_data_, out_size_);
-            bool success = written == out_size_;
-
-#ifdef _DEBUG_
-            Serial.print(F(" ["));
-            Serial.print(success ? F("OK") : F("FAIL"));
-            Serial.println(F("]"));
-            if(!success){
-                THINGER_DEBUG_VALUE("THINGER", "Expected:", out_size_);
-                THINGER_DEBUG_VALUE("THINGER", "Wrote:", written);
+            #if THINGER_OUTPUT_BUFFER_GROWING_SIZE > 0
+            // check if it is necessary to increase output size
+            if(out_size_+size>out_total_size_){
+                // compute new buffer size
+                out_total_size_ += (size/THINGER_OUTPUT_BUFFER_GROWING_SIZE + (size % THINGER_OUTPUT_BUFFER_GROWING_SIZE != 0)) * THINGER_OUTPUT_BUFFER_GROWING_SIZE;
+                // reallocate buffer
+                void * new_buffer = realloc(out_buffer_, out_total_size_);
+                // increase current total size
+                if(new_buffer!=NULL){
+                    out_buffer_ = (uint8_t*) new_buffer;
+                    #ifdef _DEBUG_MEMORY_
+                    THINGER_DEBUG_VALUE("_MEMORY", "Increased buffer size to: ", out_total_size_)
+                    THINGER_DEBUG_VALUE("_MEMORY", "Realloc Address: ", (unsigned long) out_buffer_)
+                    #endif
+                }else{
+                    // Realloc problem! Not enough memory, flushing out buffer and writing directly from the incoming buffer
+                    #ifdef _DEBUG_MEMORY_
+                    THINGER_DEBUG("_MEMORY", "Output Memory Buffer Exhausted!");
+                    #endif
+                    return flush_out_buffer() && client_write(buffer, size);
+                }
             }
+            // copy current input to buffer
+            memcpy(&out_buffer_[out_size_], buffer, size);
+            out_size_ += size;
+
+            #else
+            void * new_buffer = realloc(out_buffer_, out_size_ + size);
+            if(new_buffer!=NULL){
+                #ifdef _DEBUG_MEMORY_
+                THINGER_DEBUG_VALUE("_MEMORY", "Increased buffer size to: ", out_size_ + size)
+                THINGER_DEBUG_VALUE("_MEMORY", "Realloc Address: ", (unsigned long) new_buffer)
+                #endif
+                out_buffer_ = (uint8_t*) new_buffer;
+                memcpy(&out_buffer_[out_size_], buffer, size);
+                out_size_ += size;
+            }else{
+                // Realloc problem! Not enough memory, flushing out buffer and writing directly from the incoming buffer
+                #ifdef _DEBUG_MEMORY_
+                THINGER_DEBUG("_MEMORY", "Output Memory Buffer Exhausted!");
+                #endif
+                return flush_out_buffer() && client_write(buffer, size);
+            }
+            #endif
+        }
+        if(flush){
+            return flush_out_buffer();
+        }
+        return true;
+
+        #else
+        return client_write(buffer, size);
+        #endif
+    }
+
+    bool client_write(const char* buffer, size_t size){
+#ifdef _DEBUG_
+        Serial.print(F("[THINGER] Writing bytes: "));
+            Serial.print(size);
 #endif
 
-            free(temp_data_);
-            temp_data_ = NULL;
+        size_t written = client_.write((uint8_t*) buffer, size);
+        bool success = written == size;
+
+#ifdef _DEBUG_
+        Serial.print(F(" ["));
+        Serial.print(success ? F("OK") : F("FAIL"));
+        Serial.println(F("]"));
+        if(!success){
+            THINGER_DEBUG_VALUE("THINGER", "Expected:", size);
+            THINGER_DEBUG_VALUE("THINGER", "Wrote:", written);
+        }
+#endif
+
+        //FIXME Without this small delay or activating the debug (which takes time), the CC3200 does not work well. Why?
+#ifdef __CC3200R1M1RGC__
+        delay(1);
+#endif
+
+        return success;
+    }
+
+#ifndef THINGER_DISABLE_OUTPUT_BUFFER
+    bool flush_out_buffer(){
+        if(out_buffer_!=NULL && out_size_>0){
+            bool success = client_write((const char*)out_buffer_, out_size_);
+
+#ifdef _DEBUG_MEMORY_
+            THINGER_DEBUG_VALUE("_MEMORY", "Releasing memory size: ", out_total_size_)
+            THINGER_DEBUG_VALUE("_MEMORY", "Release Address: ", (unsigned long) out_buffer_)
+#endif
+
+            free(out_buffer_);
+            out_buffer_ = NULL;
             out_size_ = 0;
-
-            //FIXME Without this small delay or activating the debug (which takes time), the CC3200 does not work well. Why?
-            #ifdef __CC3200R1M1RGC__
-            delay(1);
-            #endif
-
+            out_total_size_ = 0;
             return success;
         }
         return true;
     }
+#endif
 
     virtual void disconnected(){
         thinger_state_listener(SOCKET_TIMEOUT);
@@ -158,11 +267,15 @@ protected:
     }
 
     virtual bool connect_socket(){
-        return client_.connect(THINGER_SERVER, THINGER_PORT);
+        return client_.connect(host_, secure_connection() ? THINGER_SSL_PORT : THINGER_PORT);
     }
 
     virtual bool secure_connection(){
+#ifdef _DISABLE_TLS_
         return false;
+#else
+        return true;
+#endif
     }
 
     enum THINGER_STATE{
@@ -177,7 +290,8 @@ protected:
         SOCKET_ERROR,
         THINGER_AUTHENTICATING,
         THINGER_AUTHENTICATED,
-        THINGER_AUTH_FAILED
+        THINGER_AUTH_FAILED,
+        THINGER_STOP_REQUEST
     };
 
     virtual void thinger_state_listener(THINGER_STATE state){
@@ -194,7 +308,7 @@ protected:
                 break;
             case SOCKET_CONNECTING:
                 Serial.print(F("[_SOCKET] Connecting to "));
-                Serial.print(THINGER_SERVER);
+                Serial.print(host_);
                 Serial.print(F(":"));
                 Serial.print(secure_connection() ? THINGER_SSL_PORT : THINGER_PORT);
                 Serial.println(F("..."));
@@ -225,6 +339,9 @@ protected:
             case THINGER_AUTH_FAILED:
                 THINGER_DEBUG("THINGER", "Auth Failed! Check username, device id, or device credentials.");
                 break;
+            case THINGER_STOP_REQUEST:
+                THINGER_DEBUG("THINGER", "Client was requested to stop.");
+                break;
         }
         #endif
     }
@@ -232,8 +349,7 @@ protected:
     bool handle_connection()
     {
         // check if client is connected
-        bool client = client_.connected();
-        if(client) return true;
+        if(client_.connected()) return true;
 
         // client is not connected, so check underlying network
         if(!network_connected()){
@@ -274,6 +390,13 @@ protected:
 
 public:
 
+    void stop(){
+        thinger_state_listener(THINGER_STOP_REQUEST);
+        client_.stop();
+        thinger_state_listener(SOCKET_DISCONNECTED);
+        thinger::thinger::disconnected();
+    }
+
     void handle(){
         if(handle_connection()){
             size_t available = client_.available();
@@ -288,14 +411,40 @@ public:
         }
     }
 
+    bool is_connected() const{
+        return client_.connected();
+    }
+
+    void set_credentials(const char* username, const char* device_id, const char* device_password){
+        username_ = username;
+        device_id_ = device_id;
+        device_password_ = device_password;
+    }
+
+    void set_host(const char* host){
+        host_ = host;
+    }
+
+    const char* get_host(){
+        return host_;
+    }
+
+    Client& get_client(){
+        return client_;
+    }
+
 private:
 
     Client& client_;
     const char* username_;
     const char* device_id_;
     const char* device_password_;
-    uint8_t * temp_data_;
+    const char* host_;
+#ifndef THINGER_DISABLE_OUTPUT_BUFFER
+    uint8_t * out_buffer_;
     size_t out_size_;
+    size_t out_total_size_;
+#endif
 };
 
 /**
@@ -304,7 +453,7 @@ private:
 
 #if defined(__AVR__) || defined(ESP8266)
 
-void digital_pin(protoson::pson& in, int pin){
+inline void digital_pin(protoson::pson& in, int pin){
     if(in.is_empty()){
         in = (bool) digitalRead(pin);
     }
@@ -313,7 +462,7 @@ void digital_pin(protoson::pson& in, int pin){
     }
 }
 
-void inverted_digital_pin(protoson::pson& in, int pin){
+inline void inverted_digital_pin(protoson::pson& in, int pin){
     if(in.is_empty()){
         in = !(bool) digitalRead(pin);
     }
@@ -324,7 +473,7 @@ void inverted_digital_pin(protoson::pson& in, int pin){
 
 #else
 
-bool digital_pin(protoson::pson& in, int pin, bool& current_state){
+inline void digital_pin(protoson::pson& in, int pin, bool& current_state){
     if(in.is_empty()) {
         in = current_state;
     }
@@ -334,7 +483,7 @@ bool digital_pin(protoson::pson& in, int pin, bool& current_state){
     }
 }
 
-bool inverted_digital_pin(protoson::pson& in, int pin, bool& current_state){
+inline void inverted_digital_pin(protoson::pson& in, int pin, bool& current_state){
     if(in.is_empty()) {
         in = !current_state;
     }

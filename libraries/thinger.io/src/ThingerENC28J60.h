@@ -24,6 +24,8 @@
 #ifndef THINGER_ENC28J60_H
 #define THINGER_ENC28J60_H
 
+#include <UIPEthernet.h>
+
 #include "ThingerClient.h"
 
 class ThingerENC28J60 : public ThingerClient {
@@ -46,6 +48,10 @@ protected:
     virtual bool connect_network(){
         connected_ = true;
         return connected_;
+    }
+
+    virtual bool secure_connection(){
+        return false;
     }
 
 private:

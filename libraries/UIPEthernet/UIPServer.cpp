@@ -20,7 +20,7 @@
 #include "UIPServer.h"
 #include "utility/logging.h"
 extern "C" {
-  #include "utility/uip-conf.h"
+  #include "utility/uipopt.h"
 }
 
 UIPServer::UIPServer(uint16_t port) : _port(htons(port))
@@ -44,6 +44,11 @@ void UIPServer::begin()
 {
   uip_listen(_port);
   UIPEthernetClass::tick();
+}
+
+void UIPServer::begin(uint16_t port) {
+  _port = htons(port);
+  begin();
 }
 
 size_t UIPServer::write(uint8_t c)
